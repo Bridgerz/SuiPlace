@@ -27,6 +27,7 @@ public struct Pixel has store {
 /// update to pixelownershipcap
 public struct PixelCap has key, store {
     id: UID,
+    key: PixelKey,
 }
 
 /// Represents a group of pixels on a grid
@@ -52,11 +53,13 @@ fun init(ctx: &mut TxContext) {
         let mut y = 0;
         let mut row: vector<Pixel> = vector::empty();
         while (y < CANVAS_WIDTH) {
+            let pixel_key = PixelKey(x, y);
             let pixel_cap = PixelCap {
                 id: object::new(ctx),
+                key: pixel_key,
             };
             let pixel = Pixel {
-                pixel_key: PixelKey(x, y),
+                pixel_key: pixel_key,
                 last_painter: option::none(),
                 owner_cap: pixel_cap.id.to_address(),
             };
@@ -93,14 +96,14 @@ public fun paint_pixel(
     let canvas_treasury = canvas.treasury;
 
     // Get an immutable reference to `pixel` for cost calculation
-    let pixel_ref = get_pixel(canvas, key);
+    let pixel_ref = canvas.pixel(key);
 
     let fee_amount = fee.value();
     let cost = calculate_pixel_paint_fee(canvas, pixel_ref);
     assert!(fee_amount >= cost, EInsufficientFee);
 
     // Now get a mutable reference to `pixel` for modifications
-    let pixel = get_pixel_mut(canvas, key);
+    let pixel = canvas.pixel_mut(key);
 
     // Calculate fee distribution
     let owner_share = calculate_owner_fee(cost);
@@ -137,12 +140,12 @@ public fun paint_pixel(
 }
 
 // Immutable reference to `pixel`
-public fun get_pixel(canvas: &Canvas, key: PixelKey): &Pixel {
+public fun pixel(canvas: &Canvas, key: PixelKey): &Pixel {
     &canvas.pixels[key.0][key.1]
 }
 
 // Mutable reference to `pixel`
-public fun get_pixel_mut(canvas: &mut Canvas, key: PixelKey): &mut Pixel {
+public fun pixel_mut(canvas: &mut Canvas, key: PixelKey): &mut Pixel {
     &mut canvas.pixels[key.0][key.1]
 }
 
@@ -156,7 +159,7 @@ public fun calculate_pixels_paint_fee(canvas: &mut Canvas, keys: vector<PixelKey
     let mut cost = 0;
     let mut x = 0;
     while (x < keys.length()) {
-        let pixel = get_pixel(canvas, keys[x]);
+        let pixel = canvas.pixel(keys[x]);
         // TODO: dynamic pricing (price bonding curve and time decay)
         cost = cost + canvas.base_paint_fee;
         x = x + 1;
@@ -215,7 +218,7 @@ fun test_paint() {
 
         let leftover = paint_pixel(&mut canvas, key, color, coin, scenario.ctx());
 
-        let pixel = get_pixel(&canvas, key);
+        let pixel = canvas.pixel(key);
 
         assert!(pixel.last_painter == option::some(manny));
 
