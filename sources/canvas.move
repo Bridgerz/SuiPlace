@@ -5,7 +5,7 @@ use sui::coin::Coin;
 use sui::event;
 use sui::sui::SUI;
 
-// constant for maximum number of pixels in a canvas (50x50)
+// constant for maximum number of pixels in a canvas (45x45)
 const CANVAS_WIDTH: u64 = 45;
 
 #[error]
@@ -47,12 +47,12 @@ fun init(ctx: &mut TxContext) {
         id: object::new(ctx),
     };
 
-    let mut x = 0;
+    let mut x = 1;
     let mut pixels: vector<vector<Pixel>> = vector::empty();
-    while (x < CANVAS_WIDTH) {
-        let mut y = 0;
+    while (x <= CANVAS_WIDTH) {
+        let mut y = 1;
         let mut row: vector<Pixel> = vector::empty();
-        while (y < CANVAS_WIDTH) {
+        while (y <= CANVAS_WIDTH) {
             let pixel_key = PixelKey(x, y);
             let pixel_cap = PixelCap {
                 id: object::new(ctx),
@@ -86,13 +86,20 @@ fun init(ctx: &mut TxContext) {
     transfer::share_object(canvas);
 }
 
+public fun new_pixel_key(x: u64, y: u64): PixelKey {
+    PixelKey(x, y)
+}
+
 public fun paint_pixel(
     canvas: &mut Canvas,
-    key: PixelKey,
+    x: u64,
+    y: u64,
     color: String,
     mut fee: Coin<SUI>,
     ctx: &mut TxContext,
 ): Coin<SUI> {
+    let key = PixelKey(x, y);
+
     let canvas_treasury = canvas.treasury;
 
     // Get an immutable reference to `pixel` for cost calculation
@@ -149,24 +156,25 @@ public fun pixel_mut(canvas: &mut Canvas, key: PixelKey): &mut Pixel {
     &mut canvas.pixels[key.0][key.1]
 }
 
+// TODO: confugurable owner fee percentage logic
 public fun calculate_owner_fee(fee: u64): u64 {
-    // TODO: confugurable owner fee percentage logic
     fee / 2
 }
 
 /// Calculates the total fee required to paint provided pixels
-public fun calculate_pixels_paint_fee(canvas: &mut Canvas, keys: vector<PixelKey>): u64 {
+public fun calculate_pixels_paint_fee(canvas: &mut Canvas, x: vector<u64>, y: vector<u64>): u64 {
     let mut cost = 0;
-    let mut x = 0;
-    while (x < keys.length()) {
-        let pixel = canvas.pixel(keys[x]);
-        // TODO: dynamic pricing (price bonding curve and time decay)
-        cost = cost + canvas.base_paint_fee;
-        x = x + 1;
+    let mut i = 0;
+    while (i < x.length()) {
+        let key = new_pixel_key(x[i], y[i]);
+        let pixel = canvas.pixel(key);
+        cost = cost + calculate_pixel_paint_fee(canvas, pixel);
+        i = i + 1;
     };
     cost
 }
 
+// TODO: dynamic pricing (price bonding curve and time decay)
 public fun calculate_pixel_paint_fee(canvas: &Canvas, _pixel: &Pixel): u64 {
     canvas.base_paint_fee
 }
@@ -178,13 +186,6 @@ public struct PaintEvent has copy, drop {
     painter: address,
     fee_paid: u64,
 }
-
-/// Event emitted when owner claims their accumulated fees
-// public struct ClaimFeesEvent has copy, drop {
-//     pixel_id: PixelKey,
-//     owner: address,
-//     amount: u64,
-// }
 
 #[test_only]
 use sui::test_scenario;
@@ -213,10 +214,11 @@ fun test_paint() {
         let mut canvas = scenario.take_shared<Canvas>();
         let coin = coin::mint_for_testing<SUI>(10_000_000_000, scenario.ctx());
 
-        let key = PixelKey(44, 44);
         let color = b"red".to_string();
 
-        let leftover = paint_pixel(&mut canvas, key, color, coin, scenario.ctx());
+        let leftover = paint_pixel(&mut canvas, 44, 44, color, coin, scenario.ctx());
+
+        let key = new_pixel_key(44, 44);
 
         let pixel = canvas.pixel(key);
 
