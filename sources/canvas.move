@@ -5,6 +5,9 @@ use sui::coin::Coin;
 use sui::event;
 use sui::sui::SUI;
 
+// TODO: add PAINT Coin
+// use suiplace::PAINT;
+
 // constant for maximum number of pixels in a canvas (45x45)
 const CANVAS_WIDTH: u64 = 45;
 
