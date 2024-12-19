@@ -1,11 +1,12 @@
-module suiplace::Canvas;
+module suiplace::canvas;
 
 use std::string::String;
+use sui::clock::{Self, Clock};
 use sui::coin::Coin;
 use sui::event;
 use sui::sui::SUI;
 
-// TODO: add PAINT Coin
+// TODO: add PAINT
 // use suiplace::PAINT;
 
 // constant for maximum number of pixels in a canvas (45x45)
@@ -22,8 +23,18 @@ public struct Pixel has store {
     pixel_key: PixelKey,
     last_painter: Option<address>,
     owner_cap: address,
-    // price_multiplier: u64,
-    // last_painted_at: u64,
+    price_multiplier: u64,
+    last_painted_at: u64,
+}
+
+/// Event emitted when a pixel is painted
+public struct PaintEvent has copy, drop {
+    pixel_id: PixelKey,
+    color: String,
+    painter: address,
+    fee_paid: u64,
+    new_price_multiplier: u64,
+    last_painted_at: u64,
 }
 
 /// Represents ownership of a pixel (tradable NFT)
@@ -41,15 +52,9 @@ public struct Canvas has key, store {
     treasury: address,
 }
 
-public struct CanvasTreasuryCap has key, store { id: UID }
-
 // Called only once, upon module publication. It must be
 // private to prevent external invocation.
-fun init(ctx: &mut TxContext) {
-    let treasury_cap = CanvasTreasuryCap {
-        id: object::new(ctx),
-    };
-
+public(package) fun new_canvas(treasury_cap: address, ctx: &mut TxContext): Canvas {
     let mut x = 1;
     let mut pixels: vector<vector<Pixel>> = vector::empty();
     while (x <= CANVAS_WIDTH) {
@@ -65,6 +70,8 @@ fun init(ctx: &mut TxContext) {
                 pixel_key: pixel_key,
                 last_painter: option::none(),
                 owner_cap: pixel_cap.id.to_address(),
+                price_multiplier: 1,
+                last_painted_at: 0,
             };
             transfer::transfer(pixel_cap, ctx.sender());
             row.push_back(pixel);
@@ -74,19 +81,12 @@ fun init(ctx: &mut TxContext) {
         x = x + 1;
     };
 
-    let canvas = Canvas {
+    Canvas {
         id: object::new(ctx),
         pixels: pixels,
         base_paint_fee: 10,
-        treasury: treasury_cap.id.to_address(),
-    };
-
-    transfer::transfer(
-        treasury_cap,
-        ctx.sender(),
-    );
-
-    transfer::share_object(canvas);
+        treasury: treasury_cap,
+    }
 }
 
 public fun new_pixel_key(x: u64, y: u64): PixelKey {
@@ -99,6 +99,7 @@ public fun paint_pixel(
     y: u64,
     color: String,
     mut fee: Coin<SUI>,
+    clock: &Clock,
     ctx: &mut TxContext,
 ): Coin<SUI> {
     let key = PixelKey(x, y);
@@ -137,6 +138,9 @@ public fun paint_pixel(
 
     // Update pixel data
     pixel.last_painter = option::some(ctx.sender());
+    pixel.last_painted_at = clock.timestamp_ms();
+
+    update_pixel_price_multiplier(pixel, clock);
 
     // Emit paint event
     event::emit(PaintEvent {
@@ -144,6 +148,8 @@ public fun paint_pixel(
         color,
         painter: tx_context::sender(ctx),
         fee_paid: fee_amount,
+        new_price_multiplier: pixel.price_multiplier,
+        last_painted_at: pixel.last_painted_at,
     });
 
     fee
@@ -182,12 +188,17 @@ public fun calculate_pixel_paint_fee(canvas: &Canvas, _pixel: &Pixel): u64 {
     canvas.base_paint_fee
 }
 
-/// Event emitted when a pixel is painted
-public struct PaintEvent has copy, drop {
-    pixel_id: PixelKey,
-    color: String,
-    painter: address,
-    fee_paid: u64,
+fun update_pixel_price_multiplier(pixel: &mut Pixel, clock: &Clock) {
+    // if pixel was last painted less than 5 mintues ago, increase price multiplier, else reset to 1
+    if (clock.timestamp_ms() - pixel.last_painted_at < 300_000) {
+        pixel.price_multiplier = pixel.price_multiplier + 1;
+    } else {
+        pixel.price_multiplier = 1;
+    }
+}
+
+public fun last_painter(pixel: &Pixel): Option<address> {
+    pixel.last_painter
 }
 
 #[test_only]
@@ -200,9 +211,12 @@ use sui::coin::{Self};
 fun test_paint() {
     let (admin, bernard, manny) = (@0x1, @0x2, @0x3);
 
+    let treasury_cap = @0x4;
+    let mut canvas;
+
     let mut scenario = test_scenario::begin(admin);
     {
-        init(scenario.ctx());
+        canvas = new_canvas(treasury_cap, scenario.ctx());
     };
 
     scenario.next_tx(admin);
@@ -214,12 +228,11 @@ fun test_paint() {
 
     scenario.next_tx(manny);
     {
-        let mut canvas = scenario.take_shared<Canvas>();
         let coin = coin::mint_for_testing<SUI>(10_000_000_000, scenario.ctx());
-
+        let clock = clock::create_for_testing(scenario.ctx());
         let color = b"red".to_string();
 
-        let leftover = paint_pixel(&mut canvas, 44, 44, color, coin, scenario.ctx());
+        let leftover = paint_pixel(&mut canvas, 44, 44, color, coin, &clock, scenario.ctx());
 
         let key = new_pixel_key(44, 44);
 
@@ -230,7 +243,7 @@ fun test_paint() {
         assert!(leftover.value() == 10_000_000_000 - 10);
 
         transfer::public_transfer(leftover, manny);
-        transfer::share_object(canvas);
+        clock::destroy_for_testing(clock);
     };
 
     scenario.next_tx(bernard);
@@ -250,5 +263,6 @@ fun test_paint() {
         scenario.return_to_sender(pixel_cap);
     };
 
+    transfer::public_transfer(canvas, admin);
     scenario.end();
 }

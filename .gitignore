@@ -1,2 +1,3 @@
 .vscode
-build
+contracts/build
+scripts/node_modules
