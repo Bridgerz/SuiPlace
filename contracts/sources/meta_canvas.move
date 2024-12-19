@@ -46,9 +46,10 @@ fun init(ctx: &mut TxContext) {
 /// Adds a canvas to the MetaCanvas
 public fun add_new_canvas(
     meta_canvas: &mut MetaCanvas,
-    _treasury_cap: &TreasuryCap,
-    canvas: Canvas,
+    treasury_cap: &TreasuryCap,
+    ctx: &mut TxContext,
 ) {
+    let canvas = canvas::new_canvas(treasury_cap.id.to_address(), ctx);
     let total_canvases = meta_canvas.canvases.length();
     meta_canvas.canvases.add(total_canvases, canvas);
 }
@@ -108,14 +109,21 @@ fun test_register_canvas() {
 
         let treasury_cap = scenario.take_from_address<TreasuryCap>(@0x1);
 
-        let canvas = canvas::new_canvas(treasury_cap.id.to_address(), scenario.ctx());
-
-        meta_canvas.add_new_canvas(&treasury_cap, canvas);
+        meta_canvas.add_new_canvas(&treasury_cap, scenario.ctx());
         assert!(meta_canvas.canvases.length() == 1);
 
         transfer::public_transfer(treasury_cap, @0x1);
         transfer::public_share_object(meta_canvas);
     };
+
+    scenario.next_tx(@0x1);
+    {
+        // check that the pixel_caps are transferred to admin
+        let pixel_cap = scenario.take_from_address<canvas::PixelCap>(@0x1);
+
+        transfer::public_transfer(pixel_cap, @0x1);
+    };
+
     scenario.end();
 }
 
@@ -135,8 +143,7 @@ fun test_paint_pixel() {
     {
         meta_canvas = scenario.take_shared<MetaCanvas>();
         treasury_cap = scenario.take_from_address<TreasuryCap>(admin);
-        canvas = canvas::new_canvas(treasury_cap.id.to_address(), scenario.ctx());
-        meta_canvas.add_new_canvas(&treasury_cap, canvas);
+        meta_canvas.add_new_canvas(&treasury_cap, scenario.ctx());
     };
 
     scenario.next_tx(manny);
