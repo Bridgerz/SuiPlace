@@ -178,10 +178,8 @@ public fun paint_pixel_with_paint(
     transfer::public_transfer(paint_payment, canvas_treasury);
 
     // Update pixel data
-    let last_painter = pixel.last_painter;
     let price_expired = canvas.is_pixel_multiplier_expired(pixel, clock);
-
-    canvas.update_pixel(key, clock, last_painter, price_expired);
+    canvas.update_pixel(key, clock, option::some(ctx.sender()), price_expired);
 
     payment
 }
@@ -436,7 +434,7 @@ fun test_paint_with_paint_coin() {
 
         let pixel = canvas.pixel(key);
 
-        assert!(pixel.last_painter == option::none());
+        assert!(pixel.last_painter == option::some(manny));
 
         assert!(leftover.value() == 10_000_000_000 - PAINT_FEE);
 
