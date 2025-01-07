@@ -19,8 +19,12 @@ fun init(ctx: &mut TxContext) {
 }
 
 /// Adds a canvas to the MetaCanvas
-public fun add_new_canvas(meta_canvas: &mut MetaCanvas, _: &CanvasCap, ctx: &mut TxContext) {
-    let canvas_id = canvas::new_canvas(ctx);
+public fun add_new_canvas(
+    meta_canvas: &mut MetaCanvas,
+    canvas_cap: &CanvasCap,
+    ctx: &mut TxContext,
+) {
+    let canvas_id = canvas::new_canvas(canvas_cap, ctx);
     let total_canvases = meta_canvas.canvases.length();
     meta_canvas.canvases.add(total_canvases, canvas_id);
 }
@@ -52,14 +56,6 @@ fun test_register_canvas() {
 
         transfer::public_transfer(meta_cap, @0x1);
         transfer::public_share_object(meta_canvas);
-    };
-
-    scenario.next_tx(@0x1);
-    {
-        // check that the pixel_owneres are transferred to admin
-        let pixel_owner = scenario.take_from_address<canvas::PixelOwner>(@0x1);
-
-        transfer::public_transfer(pixel_owner, @0x1);
     };
 
     scenario.end();
