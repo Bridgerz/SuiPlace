@@ -1,19 +1,25 @@
 module suiplace::meta_canvas;
 
-use sui::table::{Self, Table};
+use sui::event;
+use sui::table_vec::{Self, TableVec};
 use suiplace::canvas::{Self, CanvasCap};
 
 /// Represents the MetaCanvas, a parent structure holding multiple canvases
 public struct MetaCanvas has key, store {
     id: UID,
-    canvases: Table<u64, ID>, // Maps canvas index to canvas ID
+    canvases: TableVec<ID>,
+}
+
+public struct CanvasAddedEvent has copy, drop {
+    canvas_id: ID,
+    index: u64,
 }
 
 /// Initializes a new MetaCanvas
 fun init(ctx: &mut TxContext) {
     let meta_canvas = MetaCanvas {
         id: object::new(ctx),
-        canvases: table::new(ctx),
+        canvases: table_vec::empty(ctx),
     };
     transfer::share_object(meta_canvas);
 }
@@ -26,12 +32,12 @@ public fun add_new_canvas(
 ) {
     let canvas_id = canvas::new_canvas(canvas_cap, ctx);
     let total_canvases = meta_canvas.canvases.length();
-    meta_canvas.canvases.add(total_canvases, canvas_id);
-}
+    meta_canvas.canvases.push_back(canvas_id);
 
-/// Retrieves a canvas from the MetaCanvas
-public fun get_canvas_id(meta_canvas: &mut MetaCanvas, index: u64): &ID {
-    meta_canvas.canvases.borrow(index)
+    event::emit(CanvasAddedEvent {
+        canvas_id: canvas_id,
+        index: total_canvases,
+    });
 }
 
 #[test_only]

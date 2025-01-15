@@ -5,6 +5,7 @@ use sui::clock::{Self, Clock};
 use sui::coin::Coin;
 use sui::event;
 use sui::sui::SUI;
+use sui::transfer::Receiving;
 use suiplace::paint::PAINT;
 
 // constant for maximum number of pixels in a canvas (45x45)
@@ -27,6 +28,10 @@ public struct Canvas has key, store {
 
 /// Represents a key for a pixel (X, Y coordinates)
 public struct PixelKey(u64, u64) has store, copy, drop;
+
+public struct RewardTicket has store, drop {
+    value: u64,
+}
 
 /// Represents a pixel on the canvas
 public struct Pixel has store {
@@ -97,22 +102,25 @@ public fun new_pixel_key(x: u64, y: u64): PixelKey {
     PixelKey(x, y)
 }
 
-public fun paint_pixel(
+// make entry and rethink how to deal with fees
+// have coin splitting logic in the PTB layer
+// other option is to have coin be mutable
+entry fun paint_pixel(
     canvas: &mut Canvas,
     x: u64,
     y: u64,
     color: String,
     payment: Coin<SUI>,
     clock: &Clock,
-    ctx: &mut TxContext,
-): Coin<SUI> {
+    ctx: &TxContext,
+) {
     let key = PixelKey(x, y);
-
     let pixel = canvas.pixel(key);
-
     let fee_amount = payment.value();
 
-    let leftover = canvas.route_fees(pixel, fee_amount, payment, clock, ctx);
+    assert!(fee_amount == canvas.base_paint_fee, EInsufficientFee);
+
+    canvas.route_fees(pixel, fee_amount, payment, clock);
 
     // Emit paint event
     event::emit(PaintEvent {
@@ -125,49 +133,42 @@ public fun paint_pixel(
         last_painted_at: pixel.last_painted_at,
     });
 
-    // Update pixel data
     let price_expired = canvas.is_pixel_multiplier_expired(pixel, clock);
-
+    // Update pixel data
     canvas.update_pixel(key, clock, option::some(ctx.sender()), price_expired);
-
-    leftover
 }
 
-public fun paint_pixel_with_paint(
+entry fun paint_pixel_with_paint(
     canvas: &mut Canvas,
     x: u64,
     y: u64,
     color: String,
-    mut payment: Coin<PAINT>,
+    payment: Coin<PAINT>,
     clock: &Clock,
-    ctx: &mut TxContext,
-): Coin<PAINT> {
+    ctx: &TxContext,
+) {
     let key = PixelKey(x, y);
     let canvas_cap = canvas.cap.to_address();
     let pixel = canvas.pixel(key);
 
-    assert!(payment.value() >= PAINT_FEE, EInsufficientFee);
-
-    let paint_payment = payment.split(PAINT_FEE, ctx);
+    assert!(payment.value() == PAINT_FEE, EInsufficientFee);
 
     // Emit paint event
     event::emit(PaintEvent {
         pixel_id: pixel.pixel_key,
         color,
         painter: tx_context::sender(ctx),
-        fee_paid: paint_payment.value(),
+        fee_paid: payment.value(),
         in_paint: true,
         new_price_multiplier: pixel.price_multiplier,
         last_painted_at: pixel.last_painted_at,
     });
 
-    transfer::public_transfer(paint_payment, canvas_cap);
+    transfer::public_transfer(payment, canvas_cap);
 
     // Update pixel data
     let price_expired = canvas.is_pixel_multiplier_expired(pixel, clock);
     canvas.update_pixel(key, clock, option::some(ctx.sender()), price_expired);
-
-    payment
 }
 
 // Immutable reference to `pixel`
@@ -253,19 +254,9 @@ fun update_pixel(
     }
 }
 
-fun route_fees(
-    canvas: &Canvas,
-    pixel: &Pixel,
-    fee_amount: u64,
-    mut payment: Coin<SUI>,
-    clock: &Clock,
-    ctx: &mut TxContext,
-): Coin<SUI> {
+fun route_fees(canvas: &Canvas, pixel: &Pixel, fee_amount: u64, payment: Coin<SUI>, clock: &Clock) {
     let cost = canvas.calculate_pixel_paint_fee(pixel, clock);
     assert!(fee_amount >= cost, EInsufficientFee);
-
-    // Pay previous painter
-    let painter_fee = payment.split(cost, ctx);
 
     let mut paint_fee_recipient = pixel.last_painter.borrow_with_default(&canvas.cap.to_address());
 
@@ -275,12 +266,14 @@ fun route_fees(
     };
 
     transfer::public_transfer(
-        painter_fee,
+        payment,
         *paint_fee_recipient,
     );
+}
 
-    // return leftover
-    payment
+public fun claim_fees<T>(cap: &mut CanvasCap, fee_ticket: Receiving<Coin<T>>): Coin<T> {
+    let fee: Coin<T> = transfer::public_receive(&mut cap.id, fee_ticket);
+    fee
 }
 
 #[test_only]
@@ -309,16 +302,23 @@ fun test_paint() {
 
     scenario.next_tx(manny);
     {
-        let coin = coin::mint_for_testing<SUI>(10_000_000_000, scenario.ctx());
+        let mut coin = coin::mint_for_testing<SUI>(10_000_000_000, scenario.ctx());
         let clock = clock::create_for_testing(scenario.ctx());
         let color = b"red".to_string();
 
-        let leftover = paint_pixel(
+        let fee_amount = canvas.calculate_pixel_paint_fee(
+            canvas.pixel(new_pixel_key(44, 44)),
+            &clock,
+        );
+
+        let payment = coin.split(fee_amount, scenario.ctx());
+
+        paint_pixel(
             &mut canvas,
             44,
             44,
             color,
-            coin,
+            payment,
             &clock,
             scenario.ctx(),
         );
@@ -329,10 +329,8 @@ fun test_paint() {
 
         assert!(pixel.last_painter == option::some(manny));
 
-        assert!(leftover.value() == 10_000_000_000 - canvas.base_paint_fee);
-
-        transfer::public_transfer(leftover, manny);
         clock::destroy_for_testing(clock);
+        coin::burn_for_testing(coin);
     };
 
     // test admin gets first paint fee
@@ -343,7 +341,7 @@ fun test_paint() {
             .to_inner());
 
         let ticket = test_scenario::receiving_ticket_by_id<Coin<SUI>>(receivable_ids[0]);
-        let canvas_cap_owner_balance = transfer::public_receive(&mut canvas_cap.id, ticket);
+        let canvas_cap_owner_balance = claim_fees(&mut canvas_cap, ticket);
 
         assert!(canvas_cap_owner_balance.value() == canvas.base_paint_fee);
 
@@ -375,11 +373,11 @@ fun test_paint_with_paint_coin() {
 
     scenario.next_tx(manny);
     {
-        let paint_coin = coin::mint_for_testing<PAINT>(10_000_000_000, scenario.ctx());
+        let paint_coin = coin::mint_for_testing<PAINT>(PAINT_FEE, scenario.ctx());
         let clock = clock::create_for_testing(scenario.ctx());
         let color = b"red".to_string();
 
-        let leftover = paint_pixel_with_paint(
+        paint_pixel_with_paint(
             &mut canvas,
             44,
             44,
@@ -394,10 +392,6 @@ fun test_paint_with_paint_coin() {
         let pixel = canvas.pixel(key);
 
         assert!(pixel.last_painter == option::some(manny));
-
-        assert!(leftover.value() == 10_000_000_000 - PAINT_FEE);
-
-        transfer::public_transfer(leftover, manny);
         clock::destroy_for_testing(clock);
     };
 
@@ -409,7 +403,7 @@ fun test_paint_with_paint_coin() {
         >(canvas_cap.id.to_inner());
 
         let ticket = test_scenario::receiving_ticket_by_id<Coin<PAINT>>(receivable_ids[0]);
-        let canvas_cap_owner_balance = transfer::public_receive(&mut canvas_cap.id, ticket);
+        let canvas_cap_owner_balance = claim_fees(&mut canvas_cap, ticket);
 
         assert!(canvas_cap_owner_balance.value() == canvas.base_paint_fee);
 
