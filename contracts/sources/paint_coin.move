@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
-module suiplace::paint;
+module suiplace::paint_coin;
 
 use sui::coin;
 
-public struct PAINT has drop {}
+public struct PAINT_COIN has drop {}
 
 const DECIMAL: u8 = 8;
 
-fun init(otw: PAINT, ctx: &mut TxContext) {
+fun init(otw: PAINT_COIN, ctx: &mut TxContext) {
     let (treasury, metadata) = coin::create_currency(
         otw,
         DECIMAL,

@@ -2,7 +2,8 @@ module suiplace::meta_canvas;
 
 use sui::event;
 use sui::table_vec::{Self, TableVec};
-use suiplace::canvas::{Self, CanvasCap};
+use suiplace::canvas;
+use suiplace::canvas_admin::{CanvasAdminCap, CanvasRules};
 
 /// Represents the MetaCanvas, a parent structure holding multiple canvases
 public struct MetaCanvas has key, store {
@@ -27,10 +28,11 @@ fun init(ctx: &mut TxContext) {
 /// Adds a canvas to the MetaCanvas
 public fun add_new_canvas(
     meta_canvas: &mut MetaCanvas,
-    canvas_cap: &CanvasCap,
+    _: &CanvasAdminCap,
+    rules: CanvasRules,
     ctx: &mut TxContext,
 ) {
-    let canvas_id = canvas::new_canvas(canvas_cap, ctx);
+    let canvas_id = canvas::new_canvas(rules, ctx);
     let total_canvases = meta_canvas.canvases.length();
     meta_canvas.canvases.push_back(canvas_id);
 
@@ -42,6 +44,9 @@ public fun add_new_canvas(
 
 #[test_only]
 use sui::test_scenario;
+
+#[test_only]
+use suiplace::canvas_admin;
 
 #[test]
 fun test_register_canvas() {
@@ -55,12 +60,14 @@ fun test_register_canvas() {
     {
         let mut meta_canvas = scenario.take_shared<MetaCanvas>();
 
-        let meta_cap = canvas::create_canvas_cap_for_testing(scenario.ctx());
+        let addmin_cap = canvas_admin::create_canvas_admin_cap_for_testing(scenario.ctx());
 
-        meta_canvas.add_new_canvas(&meta_cap, scenario.ctx());
+        let rules = canvas_admin::new_rules(100, 1000, addmin_cap.id().to_address(), 100000000);
+
+        meta_canvas.add_new_canvas(&addmin_cap, rules, scenario.ctx());
         assert!(meta_canvas.canvases.length() == 1);
 
-        transfer::public_transfer(meta_cap, @0x1);
+        transfer::public_transfer(addmin_cap, @0x1);
         transfer::public_share_object(meta_canvas);
     };
 
