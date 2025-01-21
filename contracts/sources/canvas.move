@@ -23,6 +23,7 @@ public struct Canvas has key, store {
 
 /// Event emitted when a pixel is painted
 public struct PaintEvent has copy, drop {
+    canvas_id: ID,
     pixel: PixelKey,
     color: String,
     painter: address,
@@ -77,6 +78,7 @@ public fun paint_pixel(
 
     // Emit paint event
     event::emit(PaintEvent {
+        canvas_id: canvas.id.to_inner(),
         pixel: canvas.pixels[x][y].key(),
         color,
         painter: tx_context::sender(ctx),
@@ -100,6 +102,7 @@ public fun paint_pixel_with_paint(
 
     // Emit paint event
     event::emit(PaintEvent {
+        canvas_id: canvas.id.to_inner(),
         pixel: canvas.pixels[x][y].key(),
         color,
         painter: tx_context::sender(ctx),
