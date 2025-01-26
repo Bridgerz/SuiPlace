@@ -9,11 +9,11 @@ use suiplace::paint_coin::PAINT_COIN;
 #[error]
 const EInsufficientFee: vector<u8> = b"Insufficient fee";
 
-/// Represents a key for a pixel (X, Y coordinates)
-public struct PixelKey(u64, u64) has store, copy, drop;
+/// Represents a coordinate on a grid (X, Y coordinates)
+public struct Coordinates(u64, u64) has copy, drop, store;
 
 public struct Pixel has store {
-    pixel_key: PixelKey,
+    coordinates: Coordinates,
     last_painter: Option<address>,
     price_multiplier: u64,
     last_painted_at: u64,
@@ -21,27 +21,15 @@ public struct Pixel has store {
 
 public(package) fun new_pixel(x: u64, y: u64): Pixel {
     Pixel {
-        pixel_key: new_pixel_key(x, y),
+        coordinates: new_coordinates(x, y),
         last_painter: option::none(),
         price_multiplier: 1,
         last_painted_at: 0,
     }
 }
 
-public fun new_pixel_key(x: u64, y: u64): PixelKey {
-    PixelKey(x, y)
-}
-
-public fun x(key: PixelKey): u64 {
-    key.0
-}
-
-public fun y(key: PixelKey): u64 {
-    key.1
-}
-
-public fun key(pixel: &Pixel): PixelKey {
-    pixel.pixel_key
+public fun new_coordinates(x: u64, y: u64): Coordinates {
+    Coordinates(x, y)
 }
 
 // make entry and rethink how to deal with fees
@@ -138,4 +126,16 @@ fun route_fees(
         payment,
         *paint_fee_recipient,
     );
+}
+
+public fun x(key: Coordinates): u64 {
+    key.0
+}
+
+public fun y(key: Coordinates): u64 {
+    key.1
+}
+
+public fun coordinates(pixel: &Pixel): Coordinates {
+    pixel.coordinates
 }

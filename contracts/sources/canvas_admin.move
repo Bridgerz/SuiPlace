@@ -13,7 +13,7 @@ fun init(ctx: &mut TxContext) {
     transfer::transfer(canvas_cap, ctx.sender());
 }
 
-public struct CanvasRules has store {
+public struct CanvasRules has drop, store {
     base_paint_fee: u64,
     pixel_price_multiplier_reset_ms: u64,
     canvas_treasury: address,
@@ -54,21 +54,30 @@ public fun id(cap: &CanvasAdminCap): ID {
     cap.id.to_inner()
 }
 
-public fun update_base_paint_fee(rules: &mut CanvasRules, base_paint_fee: u64) {
+public fun update_base_paint_fee(_: &CanvasAdminCap, rules: &mut CanvasRules, base_paint_fee: u64) {
     rules.base_paint_fee = base_paint_fee;
 }
 
 public fun update_pixel_price_multiplier_reset_ms(
+    _: &CanvasAdminCap,
     rules: &mut CanvasRules,
     pixel_price_multiplier_reset_ms: u64,
 ) {
     rules.pixel_price_multiplier_reset_ms = pixel_price_multiplier_reset_ms;
 }
 
-public fun update_canvas_treasury(rules: &mut CanvasRules, canvas_treasury: address) {
+public fun update_canvas_treasury(
+    _: &CanvasAdminCap,
+    rules: &mut CanvasRules,
+    canvas_treasury: address,
+) {
     rules.canvas_treasury = canvas_treasury;
 }
 
+//TODO: make the fee_ticket a vector of tickets
+// get all objects owned by the cap
+// txb.receiving_ref
+//
 public fun claim_fees<T>(cap: &mut CanvasAdminCap, fee_ticket: Receiving<Coin<T>>): Coin<T> {
     let fee: Coin<T> = transfer::public_receive(&mut cap.id, fee_ticket);
     fee
