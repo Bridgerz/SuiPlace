@@ -32,7 +32,10 @@ public struct PaintEvent has copy, drop {
     last_painted_at: u64,
 }
 
-public(package) fun new_canvas(_: &CanvasAdminCap, ctx: &mut TxContext): Canvas {
+public(package) fun new_canvas(
+    _: &CanvasAdminCap,
+    ctx: &mut TxContext,
+): Canvas {
     let mut x = 0;
     let mut pixels: vector<vector<Pixel>> = vector::empty();
     while (x < CANVAS_WIDTH) {
@@ -118,7 +121,8 @@ public fun calculate_pixels_paint_fee(
     let mut cost = 0;
     let mut i = 0;
     while (i < x.length()) {
-        cost = cost + canvas.calculate_pixel_paint_fee(rules, x[i], y[i], clock);
+        cost =
+            cost + canvas.calculate_pixel_paint_fee(rules, x[i], y[i], clock);
         i = i + 1;
     };
     cost
