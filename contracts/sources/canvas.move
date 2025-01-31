@@ -70,7 +70,7 @@ public(package) fun paint_pixel(
 ) {
     let payment_amount = payment.value();
 
-    canvas.pixels[x][y].paint(rules, payment, clock, ctx);
+    canvas.pixels[x][y].paint(color, rules, payment, clock, ctx);
 
     // Emit paint event
     event::emit(PaintEvent {
@@ -95,7 +95,7 @@ public fun paint_pixel_with_paint(
     clock: &Clock,
     ctx: &TxContext,
 ) {
-    canvas.pixels[x][y].paint_with_paint(rules, payment, clock, ctx);
+    canvas.pixels[x][y].paint_with_paint(color, rules, payment, clock, ctx);
 
     // Emit paint event
     event::emit(PaintEvent {

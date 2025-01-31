@@ -1,6 +1,7 @@
 module suiplace::meta_canvas;
 
 use std::string::String;
+use std::u64;
 use sui::clock::Clock;
 use sui::coin::Coin;
 use sui::event;
@@ -47,17 +48,15 @@ fun init(ctx: &mut TxContext) {
 }
 
 /// Adds a canvas to the MetaCanvas
-/// TODO: enable automatic canvas placement based on a grid pattern and remove
-/// canvas_location
 public fun add_new_canvas(
     meta_canvas: &mut MetaCanvas,
     canvas_admin_cap: &CanvasAdminCap,
-    canvas_location: Coordinates,
     ctx: &mut TxContext,
 ) {
     let canvas = canvas::new_canvas(canvas_admin_cap, ctx);
     let total_canvases = meta_canvas.canvases.length();
     let canvas_id = object::id(&canvas);
+    let canvas_location = calculate_next_canvas_location(total_canvases);
     meta_canvas.canvases.add(canvas_location, canvas);
 
     event::emit(CanvasAddedEvent {
@@ -119,6 +118,39 @@ public fun get_canvas_coordinates(x: u64, y: u64): Coordinates {
     let offset_x = x / CANVAS_WIDTH;
     let offset_y = y / CANVAS_WIDTH;
     pixel::new_coordinates(offset_x, offset_y)
+}
+
+/// Calculates the next location (x,y) based on the index `length`.
+public fun calculate_next_canvas_location(length: u64): Coordinates {
+    // If this is the very first canvas, it goes to (0,0).
+    if (length == 0) {
+        return pixel::new_coordinates(0, 0)
+    };
+
+    // Identify which "ring" we're on by taking the integer sqrt
+    let r = u64::sqrt(length);
+
+    // How far into ring r we are
+    let offset = length - (r * r);
+
+    // If we're on ring 0, it's always (0,0), but length=0
+    // is already handled above, so r > 0 from here.
+
+    // The ring has 2r+1 points, offset in [0..2r].
+    // The first (r+1) of them are moving horizontally,
+    // and the last r of them move vertically downward.
+    // Segment 1: offset in [0..r]   => x = offset, y = r
+    // Segment 2: offset in (r..2r] => x = r,       y = 2r - offset
+
+    if (offset <= r) {
+        let x = offset;
+        let y = r;
+        return pixel::new_coordinates(x, y)
+    } else {
+        let x = r;
+        let y = (2 * r) - offset;
+        return pixel::new_coordinates(x, y)
+    }
 }
 
 public fun offset_pixel_coordinates(

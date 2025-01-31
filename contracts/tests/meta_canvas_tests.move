@@ -40,28 +40,24 @@ fun test_paint_pixels() {
     let canvas_1_coordinates = pixel::new_coordinates(0, 0);
     meta_canvas.add_new_canvas(
         &canvas_cap,
-        canvas_1_coordinates,
         scenario.ctx(),
     );
 
     let canvas_2_coordinates = pixel::new_coordinates(0, 1);
     meta_canvas.add_new_canvas(
         &canvas_cap,
-        canvas_2_coordinates,
         scenario.ctx(),
     );
 
     let canvas_3_coordinates = pixel::new_coordinates(1, 1);
     meta_canvas.add_new_canvas(
         &canvas_cap,
-        canvas_3_coordinates,
         scenario.ctx(),
     );
 
     let canvas_4_coordinates = pixel::new_coordinates(1, 0);
     meta_canvas.add_new_canvas(
         &canvas_cap,
-        canvas_4_coordinates,
         scenario.ctx(),
     );
 
@@ -73,7 +69,11 @@ fun test_paint_pixels() {
     let pixels_x = vector<u64>[44, 44, 45, 45];
     let pixels_y = vector<u64>[44, 45, 45, 44];
     let colors = vector<String>[color, color, color, color];
-    let fee_amount = meta_canvas.calculate_pixels_paint_fee(pixels_x, pixels_y, &clock);
+    let fee_amount = meta_canvas.calculate_pixels_paint_fee(
+        pixels_x,
+        pixels_y,
+        &clock,
+    );
 
     let payment = coin.split(fee_amount, scenario.ctx());
 
@@ -147,4 +147,33 @@ fun test_paint_pixels() {
     transfer::public_transfer(meta_canvas, admin);
     transfer::public_transfer(canvas_cap, admin);
     scenario.end();
+}
+
+#[test]
+fun test_calculate_next_canvas_location() {
+    let location_1 = meta_canvas::calculate_next_canvas_location(0);
+    let location_2 = meta_canvas::calculate_next_canvas_location(1);
+    let location_3 = meta_canvas::calculate_next_canvas_location(2);
+    let location_4 = meta_canvas::calculate_next_canvas_location(3);
+    let location_5 = meta_canvas::calculate_next_canvas_location(4);
+    let location_6 = meta_canvas::calculate_next_canvas_location(5);
+    let location_7 = meta_canvas::calculate_next_canvas_location(6);
+    let location_8 = meta_canvas::calculate_next_canvas_location(7);
+    let location_9 = meta_canvas::calculate_next_canvas_location(8);
+    let location_10 = meta_canvas::calculate_next_canvas_location(9);
+    let location_11 = meta_canvas::calculate_next_canvas_location(10);
+    let location_12 = meta_canvas::calculate_next_canvas_location(11);
+
+    assert!(location_1.x() == 0 && location_1.y() == 0);
+    assert!(location_2.x() == 0 && location_2.y() == 1);
+    assert!(location_3.x() == 1 && location_3.y() == 1);
+    assert!(location_4.x() == 1 && location_4.y() == 0);
+    assert!(location_5.x() == 0 && location_5.y() == 2);
+    assert!(location_6.x() == 1 && location_6.y() == 2);
+    assert!(location_7.x() == 2 && location_7.y() == 2);
+    assert!(location_8.x() == 2 && location_8.y() == 1);
+    assert!(location_9.x() == 2 && location_9.y() == 0);
+    assert!(location_10.x() == 0 && location_10.y() == 3);
+    assert!(location_11.x() == 1 && location_11.y() == 3);
+    assert!(location_12.x() == 2 && location_12.y() == 3);
 }
