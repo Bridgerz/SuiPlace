@@ -9,7 +9,7 @@ use sui::object_table::{Self, ObjectTable};
 use sui::sui::SUI;
 use suiplace::canvas::{Self, Canvas};
 use suiplace::canvas_admin::{Self, CanvasRules, CanvasAdminCap};
-use suiplace::pixel::{Self, Coordinates};
+use suiplace::pixel::{Self, Pixel, Coordinates};
 
 const CANVAS_WIDTH: u64 = 45;
 
@@ -77,7 +77,7 @@ entry fun paint_pixels(
     assert!(x.length() == y.length() && y.length() == colors.length());
     let mut i = 0;
     while (i < x.length()) {
-        let canvas_coordinates = get_canvas_coordinates(x[i], y[i]);
+        let canvas_coordinates = get_canvas_coordinates_from_pixel(x[i], y[i]);
         let canvas = meta_canvas.canvases.borrow_mut(canvas_coordinates);
         let (offset_x, offset_y) = offset_pixel_coordinates(
             x[i],
@@ -114,10 +114,21 @@ entry fun paint_pixels(
 
 // TODO: add paint pixels with paint function
 
-public fun get_canvas_coordinates(x: u64, y: u64): Coordinates {
+public fun get_canvas_coordinates_from_pixel(x: u64, y: u64): Coordinates {
     let offset_x = x / CANVAS_WIDTH;
     let offset_y = y / CANVAS_WIDTH;
     pixel::new_coordinates(offset_x, offset_y)
+}
+
+public fun get_pixel(meta_canvas: &MetaCanvas, x: u64, y: u64): &Pixel {
+    let canvas_coordinates = get_canvas_coordinates_from_pixel(x, y);
+    let canvas = meta_canvas.canvases.borrow(canvas_coordinates);
+    let (x, y) = offset_pixel_coordinates(
+        x,
+        y,
+        canvas_coordinates,
+    );
+    canvas.pixel(pixel::new_coordinates(x, y))
 }
 
 /// Calculates the next location (x,y) based on the index `length`.
@@ -172,7 +183,7 @@ public fun calculate_pixels_paint_fee(
     let mut total_fee = 0;
     let mut i = 0;
     while (i < x.length()) {
-        let canvas_coordinates = get_canvas_coordinates(x[i], y[i]);
+        let canvas_coordinates = get_canvas_coordinates_from_pixel(x[i], y[i]);
         let canvas = meta_canvas.canvases.borrow(canvas_coordinates);
         let (offset_x, offset_y) = offset_pixel_coordinates(
             x[i],

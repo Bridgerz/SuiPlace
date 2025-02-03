@@ -11,14 +11,14 @@ use suiplace::meta_canvas;
 use suiplace::pixel;
 
 #[test]
-fun test_get_canvas_coordinates() {
-    let cord_1 = meta_canvas::get_canvas_coordinates(0, 0);
+fun test_get_canvas_coordinates_from_pixel() {
+    let cord_1 = meta_canvas::get_canvas_coordinates_from_pixel(0, 0);
 
-    let cord_2 = meta_canvas::get_canvas_coordinates(45, 45);
+    let cord_2 = meta_canvas::get_canvas_coordinates_from_pixel(45, 45);
 
-    let cord_3 = meta_canvas::get_canvas_coordinates(90, 90);
+    let cord_3 = meta_canvas::get_canvas_coordinates_from_pixel(90, 90);
 
-    let cord_4 = meta_canvas::get_canvas_coordinates(100, 100);
+    let cord_4 = meta_canvas::get_canvas_coordinates_from_pixel(100, 100);
 
     assert!(cord_1.x() == 0 && cord_1.y() == 0);
     assert!(cord_2.x() == 1 && cord_2.y() == 1);
