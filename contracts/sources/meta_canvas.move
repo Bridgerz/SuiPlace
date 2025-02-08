@@ -39,7 +39,7 @@ fun init(ctx: &mut TxContext) {
         canvases: object_table::new(ctx),
         rules: canvas_admin::new_rules(
             10000000,
-            1000,
+            300000, // 5 minutes in milliseconds
             ctx.sender(),
             100000000,
         ),
@@ -131,6 +131,10 @@ public fun get_pixel(meta_canvas: &MetaCanvas, x: u64, y: u64): &Pixel {
     canvas.pixel(pixel::new_coordinates(x, y))
 }
 
+public fun rules(meta_canvas: &MetaCanvas): &CanvasRules {
+    &meta_canvas.rules
+}
+
 /// Calculates the next location (x,y) based on the index `length`.
 public fun calculate_next_canvas_location(length: u64): Coordinates {
     // If this is the very first canvas, it goes to (0,0).
@@ -202,6 +206,34 @@ public fun get_canvas(
     coordinates: Coordinates,
 ): &Canvas {
     meta_canvas.canvases.borrow(coordinates)
+}
+
+public fun update_base_paint_fee(
+    _: &CanvasAdminCap,
+    meta_canvas: &mut MetaCanvas,
+    base_paint_fee: u64,
+) {
+    meta_canvas.rules.update_base_paint_fee(base_paint_fee);
+}
+
+public fun update_pixel_price_multiplier_reset_ms(
+    _: &CanvasAdminCap,
+    meta_canvas: &mut MetaCanvas,
+    pixel_price_multiplier_reset_ms: u64,
+) {
+    meta_canvas
+        .rules
+        .update_pixel_price_multiplier_reset_ms(
+            pixel_price_multiplier_reset_ms,
+        );
+}
+
+public fun update_canvas_treasury(
+    _: &CanvasAdminCap,
+    meta_canvas: &mut MetaCanvas,
+    canvas_treasury: address,
+) {
+    meta_canvas.rules.update_canvas_treasury(canvas_treasury);
 }
 
 #[test_only]

@@ -163,6 +163,10 @@ fun test_calculate_next_canvas_location() {
     let location_10 = meta_canvas::calculate_next_canvas_location(9);
     let location_11 = meta_canvas::calculate_next_canvas_location(10);
     let location_12 = meta_canvas::calculate_next_canvas_location(11);
+    let location_13 = meta_canvas::calculate_next_canvas_location(12);
+    let location_14 = meta_canvas::calculate_next_canvas_location(13);
+    let location_15 = meta_canvas::calculate_next_canvas_location(14);
+    let location_16 = meta_canvas::calculate_next_canvas_location(15);
 
     assert!(location_1.x() == 0 && location_1.y() == 0);
     assert!(location_2.x() == 0 && location_2.y() == 1);
@@ -176,4 +180,14 @@ fun test_calculate_next_canvas_location() {
     assert!(location_10.x() == 0 && location_10.y() == 3);
     assert!(location_11.x() == 1 && location_11.y() == 3);
     assert!(location_12.x() == 2 && location_12.y() == 3);
+    assert!(location_13.x() == 3 && location_13.y() == 3);
+    assert!(location_14.x() == 3 && location_14.y() == 2);
+    assert!(location_15.x() == 3 && location_15.y() == 1);
+    assert!(location_16.x() == 3 && location_16.y() == 0);
+
+    let mut x = 0;
+    while (x < 1000) {
+        let _location = meta_canvas::calculate_next_canvas_location(x);
+        x = x + 1;
+    };
 }
