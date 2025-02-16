@@ -18,6 +18,7 @@ public struct MetaCanvas has key, store {
     id: UID,
     canvases: ObjectTable<Coordinates, Canvas>,
     rules: CanvasRules,
+    ticket_odds: u64,
 }
 
 public struct CanvasAddedEvent has copy, drop {
@@ -43,6 +44,7 @@ fun init(ctx: &mut TxContext) {
             ctx.sender(),
             100000000,
         ),
+        ticket_odds: 10000, // 10000 => 100%
     };
     transfer::share_object(meta_canvas);
 }
@@ -236,6 +238,14 @@ public fun update_canvas_treasury(
     meta_canvas.rules.update_canvas_treasury(canvas_treasury);
 }
 
+public fun update_ticket_odds(
+    _: &CanvasAdminCap,
+    meta_canvas: &mut MetaCanvas,
+    ticket_odds: u64,
+) {
+    meta_canvas.ticket_odds = ticket_odds;
+}
+
 #[test_only]
 public fun create_meta_canvas_for_testing(ctx: &mut TxContext): MetaCanvas {
     MetaCanvas {
@@ -247,5 +257,6 @@ public fun create_meta_canvas_for_testing(ctx: &mut TxContext): MetaCanvas {
             ctx.sender(),
             100000000,
         ),
+        ticket_odds: 100,
     }
 }
