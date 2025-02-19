@@ -1,77 +1,113 @@
 module suiplace::rewards;
 
+use std::string::String;
 use std::u64;
 use sui::object_bag::{Self, ObjectBag};
 use sui::random::{Random, new_generator};
+use sui::transfer::Receiving;
+use sui::vec_map::VecMap;
 use suiplace::canvas_admin::CanvasAdminCap;
 
 const BPS_SCALE: u64 = 10_000; // scaling factor for basis points
 const RAND_MAX: u32 = 1_000_000_000;
 
-public struct RewardPool has key {
+public struct RewardWheel has key, store {
     id: UID,
     paused: bool,
     rewards: ObjectBag,
+    metadata: VecMap<String, String>,
 }
 
-public struct Ticket has key {
+public struct Ticket has key, store {
     id: UID,
     valid: bool,
 }
 
-public fun create_reward_pool<T: key + store>(
+public struct Reward has key, store {
+    id: UID,
+}
+
+public fun create_reward_wheel(
     _: &CanvasAdminCap,
-    items: &mut vector<T>,
+    metadata: VecMap<String, String>,
     ctx: &mut TxContext,
 ) {
-    let mut pool = RewardPool {
+    let wheel = RewardWheel {
         id: object::new(ctx),
         paused: false,
         rewards: object_bag::new(ctx),
-    };
-    let mut i = 0;
-    while (i < items.length() as u32) {
-        pool.rewards_mut().add(i, items.pop_back());
-        i = i + 1;
+        metadata: metadata,
     };
 
-    transfer::share_object(pool);
+    transfer::share_object(wheel);
 
     // TODO: emit event
 }
 
-public fun restock_reward_pool<T: key + store>(
-    pool: &mut RewardPool,
-    items: &mut vector<T>,
+public fun add_rewards<T: key + store>(
+    wheel: &mut RewardWheel,
+    _: &CanvasAdminCap,
+    mut items: vector<T>,
+    ctx: &mut TxContext,
 ) {
     // TODO: error message
-    assert!(!pool.paused);
-    let mut i = 0;
-    while (i < items.length()) {
-        pool.rewards.add(i, items.pop_back());
+    assert!(!wheel.paused);
+    let offset = wheel.rewards.length();
+    let mut i = offset as u32;
+    while (i < (items.length() + offset) as u32) {
+        // create reward object
+        let reward = Reward {
+            id: object::new(ctx),
+        };
+        let reward_address = object::id(&reward).to_address();
+        transfer::public_transfer(items.pop_back(), reward_address);
+        // add reward to item
+        wheel.rewards.add(i, reward);
         i = i + 1;
     };
+
+    items.destroy_empty();
 
     // TODO: emit event
 }
 
-entry fun spin_the_wheel<T: key + store>(
-    pool: &mut RewardPool,
+public fun withdraw_from_reward_wheel<T: key + store>(
+    _: &CanvasAdminCap,
+    wheel: &mut RewardWheel,
+    key: u32,
+): T {
+    wheel.rewards.remove(key)
+}
+
+entry fun toggle_reward_wheel(_: &CanvasAdminCap, wheel: &mut RewardWheel) {
+    wheel.paused = !wheel.paused;
+}
+
+public fun set_reward_wheel_metadata(
+    _: &CanvasAdminCap,
+    wheel: &mut RewardWheel,
+    metadata: VecMap<String, String>,
+) {
+    wheel.metadata = metadata;
+}
+
+entry fun spin(
+    wheel: &mut RewardWheel,
     ticket: Ticket,
     r: &Random,
     ctx: &mut TxContext,
 ) {
     // TODO: error message
-    assert!(!pool.paused);
+    assert!(!wheel.paused);
     // TODO: error message
     assert!(ticket.valid);
     let mut generator = r.new_generator(ctx);
     let index = generator.generate_u32_in_range(
         1,
-        (pool.rewards.length() as u32),
+        (wheel.rewards.length() as u32),
     );
 
-    let reward: T = pool.rewards.remove(index);
+    let reward: Reward = wheel.rewards.remove(index);
 
     ticket.destroy();
     transfer::public_transfer(
@@ -80,6 +116,13 @@ entry fun spin_the_wheel<T: key + store>(
     );
 
     // TODO: emit event
+}
+
+public fun claim_reward<T: key + store>(
+    reward: &mut Reward,
+    reward_ticket: Receiving<T>,
+): T {
+    transfer::public_receive(&mut reward.id, reward_ticket)
 }
 
 /// Anyone can play and receive a ticket.
@@ -120,6 +163,17 @@ public fun destroy_ticket(ticket: Ticket) {
     object::delete(id);
 }
 
-public fun rewards_mut(pool: &mut RewardPool): &mut ObjectBag {
-    &mut pool.rewards
+public fun rewards_mut(wheel: &mut RewardWheel): &mut ObjectBag {
+    &mut wheel.rewards
+}
+
+#[test_only]
+public fun create_ticket_for_testing(
+    is_valid: bool,
+    ctx: &mut TxContext,
+): Ticket {
+    Ticket {
+        id: object::new(ctx),
+        valid: is_valid,
+    }
 }

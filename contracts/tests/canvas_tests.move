@@ -93,6 +93,7 @@ fun test_paint() {
     scenario.end();
 }
 
+// TODO:
 // #[test]
 // fun test_paint_with_paint_coin() {
 //     let (admin, manny) = (@0x1, @0x2);

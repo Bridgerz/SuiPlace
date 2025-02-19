@@ -85,7 +85,7 @@ public(package) fun paint_pixel(
     });
 }
 
-public fun paint_pixel_with_paint(
+public(package) fun paint_pixel_with_paint(
     canvas: &mut Canvas,
     rules: &CanvasRules,
     x: u64,
