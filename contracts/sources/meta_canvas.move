@@ -9,6 +9,7 @@ use sui::object_table::{Self, ObjectTable};
 use sui::sui::SUI;
 use suiplace::canvas::{Self, Canvas};
 use suiplace::canvas_admin::{Self, CanvasRules, CanvasAdminCap};
+use suiplace::paint_coin::PAINT_COIN;
 use suiplace::pixel::{Self, Pixel, Coordinates};
 
 const CANVAS_WIDTH: u64 = 45;
@@ -114,7 +115,52 @@ entry fun paint_pixels(
     transfer::public_transfer(payment, ctx.sender());
 }
 
-// TODO: add paint pixels with paint function
+entry fun paint_pixels_with_paint(
+    meta_canvas: &mut MetaCanvas,
+    x: vector<u64>,
+    y: vector<u64>,
+    colors: vector<String>,
+    clock: &Clock,
+    mut payment: Coin<PAINT_COIN>,
+    ctx: &mut TxContext,
+) {
+    assert!(x.length() == y.length() && y.length() == colors.length());
+    let mut i = 0;
+    while (i < x.length()) {
+        let canvas_coordinates = get_canvas_coordinates_from_pixel(x[i], y[i]);
+        let canvas = meta_canvas.canvases.borrow_mut(canvas_coordinates);
+        let (offset_x, offset_y) = offset_pixel_coordinates(
+            x[i],
+            y[i],
+            canvas_coordinates,
+        );
+        let fee = canvas.calculate_pixel_paint_fee(
+            &meta_canvas.rules,
+            offset_x,
+            offset_y,
+            clock,
+        );
+        let pixel_payment = payment.split(fee, ctx);
+        canvas.paint_pixel_with_paint(
+            &meta_canvas.rules,
+            offset_x,
+            offset_y,
+            colors[i],
+            pixel_payment,
+            clock,
+            ctx,
+        );
+        i = i + 1;
+    };
+
+    event::emit(PixelsPaintedEvent {
+        pixels_x: x,
+        pixels_y: y,
+        color: colors,
+    });
+
+    transfer::public_transfer(payment, ctx.sender());
+}
 
 public fun get_canvas_coordinates_from_pixel(x: u64, y: u64): Coordinates {
     let offset_x = x / CANVAS_WIDTH;

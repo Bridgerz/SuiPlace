@@ -1,14 +1,9 @@
 #[test_only]
 module suiplace::canvas_admin_tests;
 
-use std::string::String;
-use sui::clock;
-use sui::coin;
-use sui::sui::SUI;
 use sui::test_scenario;
 use suiplace::canvas_admin;
 use suiplace::meta_canvas;
-use suiplace::pixel;
 
 #[test]
 fun test_update_pixel_price_multiplier() {

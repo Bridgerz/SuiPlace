@@ -14,7 +14,7 @@ fun init(otw: PAINT_COIN, ctx: &mut TxContext) {
         DECIMAL,
         b"PAINT",
         b"Paint",
-        b"Paint token used to paint SuiPlace canvas pixels",
+        b"SuiPlace Paint coins used to paint pixels",
         option::none(),
         ctx,
     );
