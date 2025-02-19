@@ -91,12 +91,7 @@ public fun set_reward_wheel_metadata(
     wheel.metadata = metadata;
 }
 
-entry fun spin(
-    wheel: &mut RewardWheel,
-    ticket: Ticket,
-    r: &Random,
-    ctx: &mut TxContext,
-) {
+entry fun spin(wheel: &mut RewardWheel, ticket: Ticket, r: &Random, ctx: &mut TxContext) {
     // TODO: error message
     assert!(!wheel.paused);
     // TODO: error message
@@ -118,10 +113,7 @@ entry fun spin(
     // TODO: emit event
 }
 
-public fun claim_reward<T: key + store>(
-    reward: &mut Reward,
-    reward_ticket: Receiving<T>,
-): T {
+public fun claim_reward<T: key + store>(reward: &mut Reward, reward_ticket: Receiving<T>): T {
     transfer::public_receive(&mut reward.id, reward_ticket)
 }
 
@@ -168,10 +160,7 @@ public fun rewards_mut(wheel: &mut RewardWheel): &mut ObjectBag {
 }
 
 #[test_only]
-public fun create_ticket_for_testing(
-    is_valid: bool,
-    ctx: &mut TxContext,
-): Ticket {
+public fun create_ticket_for_testing(is_valid: bool, ctx: &mut TxContext): Ticket {
     Ticket {
         id: object::new(ctx),
         valid: is_valid,

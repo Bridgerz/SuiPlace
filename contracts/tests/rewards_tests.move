@@ -3,7 +3,7 @@ module suiplace::rewards_tests;
 
 use std::string::String;
 use sui::coin::{Self, Coin};
-use sui::random::Random;
+use sui::random::{Self, Random};
 use sui::sui::SUI;
 use sui::test_scenario;
 use sui::vec_map;
@@ -20,10 +20,13 @@ public struct TestReward has key, store {
 fun spin_wheel() {
     create_test_wheel();
 
+    let system = @0x0;
     let admin = @0x1;
     let player = @0x2;
 
-    let mut scenario = test_scenario::begin(admin);
+    let mut scenario = test_scenario::begin(system);
+    random::create_for_testing(scenario.ctx());
+    scenario.next_tx(admin);
 
     let canvas_cap = canvas_admin::create_canvas_admin_cap_for_testing(scenario.ctx());
 
@@ -37,7 +40,17 @@ fun spin_wheel() {
     scenario.next_tx(player);
 
     let mut wheel = scenario.take_shared<RewardWheel>();
-    let random: Random = scenario.take_shared();
+
+    scenario.next_tx(system);
+
+    let mut random: Random = scenario.take_shared();
+    random.update_randomness_state_for_testing(
+        0,
+        x"1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F",
+        scenario.ctx(),
+    );
+    scenario.next_tx(player);
+
     wheel.spin(ticket, &random, scenario.ctx());
 
     scenario.next_tx(player);
@@ -49,8 +62,8 @@ fun spin_wheel() {
     transfer::public_transfer(reward, player);
     transfer::public_transfer(canvas_cap, admin);
     transfer::public_share_object(wheel);
-    scenario.return_to_sender(random);
 
+    test_scenario::return_shared(random);
     scenario.end();
 }
 
