@@ -4,15 +4,19 @@ use std::string::String;
 use std::u64;
 use sui::clock::Clock;
 use sui::coin::Coin;
-use sui::event;
 use sui::object_table::{Self, ObjectTable};
 use sui::sui::SUI;
 use suiplace::canvas::{Self, Canvas};
 use suiplace::canvas_admin::{Self, CanvasRules, CanvasAdminCap};
+use suiplace::events;
 use suiplace::paint_coin::PAINT_COIN;
 use suiplace::pixel::{Self, Pixel, Coordinates};
 
 const CANVAS_WIDTH: u64 = 45;
+
+#[error]
+const EInvalidPaintData: vector<u8> =
+    b"Must provide equal number of x, y, and color values";
 
 /// Represents the MetaCanvas, a parent structure holding multiple canvases
 public struct MetaCanvas has key, store {
@@ -20,18 +24,6 @@ public struct MetaCanvas has key, store {
     canvases: ObjectTable<Coordinates, Canvas>,
     rules: CanvasRules,
     ticket_odds: u64,
-}
-
-public struct CanvasAddedEvent has copy, drop {
-    canvas_id: ID,
-    index: u64,
-}
-
-/// Event emitted when a pixel is painted
-public struct PixelsPaintedEvent has copy, drop {
-    pixels_x: vector<u64>,
-    pixels_y: vector<u64>,
-    color: vector<String>,
 }
 
 /// Initializes a new MetaCanvas
@@ -62,10 +54,7 @@ public fun add_new_canvas(
     let canvas_location = calculate_next_canvas_location(total_canvases);
     meta_canvas.canvases.add(canvas_location, canvas);
 
-    event::emit(CanvasAddedEvent {
-        canvas_id,
-        index: total_canvases,
-    });
+    events::emit_canvas_added_event(canvas_id, total_canvases);
 }
 
 entry fun paint_pixels(
@@ -77,7 +66,10 @@ entry fun paint_pixels(
     mut payment: Coin<SUI>,
     ctx: &mut TxContext,
 ) {
-    assert!(x.length() == y.length() && y.length() == colors.length());
+    assert!(
+        x.length() == y.length() && y.length() == colors.length(),
+        EInvalidPaintData,
+    );
     let mut i = 0;
     while (i < x.length()) {
         let canvas_coordinates = get_canvas_coordinates_from_pixel(x[i], y[i]);
@@ -106,11 +98,7 @@ entry fun paint_pixels(
         i = i + 1;
     };
 
-    event::emit(PixelsPaintedEvent {
-        pixels_x: x,
-        pixels_y: y,
-        color: colors,
-    });
+    events::emit_pixels_painted_event(x, y, colors);
 
     transfer::public_transfer(payment, ctx.sender());
 }
@@ -124,7 +112,10 @@ entry fun paint_pixels_with_paint(
     mut payment: Coin<PAINT_COIN>,
     ctx: &mut TxContext,
 ) {
-    assert!(x.length() == y.length() && y.length() == colors.length());
+    assert!(
+        x.length() == y.length() && y.length() == colors.length(),
+        EInvalidPaintData,
+    );
     let mut i = 0;
     while (i < x.length()) {
         let canvas_coordinates = get_canvas_coordinates_from_pixel(x[i], y[i]);
@@ -153,11 +144,7 @@ entry fun paint_pixels_with_paint(
         i = i + 1;
     };
 
-    event::emit(PixelsPaintedEvent {
-        pixels_x: x,
-        pixels_y: y,
-        color: colors,
-    });
+    events::emit_pixels_painted_event(x, y, colors);
 
     transfer::public_transfer(payment, ctx.sender());
 }

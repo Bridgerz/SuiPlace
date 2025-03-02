@@ -3,7 +3,6 @@ module suiplace::canvas;
 use std::string::String;
 use sui::clock::Clock;
 use sui::coin::Coin;
-use sui::event;
 use sui::sui::SUI;
 use suiplace::canvas_admin::{CanvasRules, CanvasAdminCap};
 use suiplace::paint_coin::PAINT_COIN;
@@ -18,18 +17,6 @@ public struct Canvas has key, store {
     id: UID,
     pixels: vector<vector<Pixel>>,
     version: u64,
-}
-
-/// Event emitted when a pixel is painted
-public struct PaintEvent has copy, drop {
-    canvas_id: ID,
-    pixel_coordinate: Coordinates,
-    color: String,
-    painter: address,
-    fee_paid: u64,
-    in_paint: bool,
-    new_price_multiplier: u64,
-    last_painted_at: u64,
 }
 
 public(package) fun new_canvas(
@@ -68,21 +55,7 @@ public(package) fun paint_pixel(
     clock: &Clock,
     ctx: &TxContext,
 ) {
-    let payment_amount = payment.value();
-
     canvas.pixels[x][y].paint(color, rules, payment, clock, ctx);
-
-    // Emit paint event
-    event::emit(PaintEvent {
-        canvas_id: canvas.id.to_inner(),
-        pixel_coordinate: canvas.pixels[x][y].coordinates(),
-        color,
-        painter: tx_context::sender(ctx),
-        fee_paid: payment_amount,
-        new_price_multiplier: canvas.pixels[x][y].price_multiplier(),
-        last_painted_at: canvas.pixels[x][y].last_painted_at(),
-        in_paint: false,
-    });
 }
 
 public(package) fun paint_pixel_with_paint(
@@ -96,18 +69,6 @@ public(package) fun paint_pixel_with_paint(
     ctx: &TxContext,
 ) {
     canvas.pixels[x][y].paint_with_paint(color, rules, payment, clock, ctx);
-
-    // Emit paint event
-    event::emit(PaintEvent {
-        canvas_id: canvas.id.to_inner(),
-        pixel_coordinate: canvas.pixels[x][y].coordinates(),
-        color,
-        painter: tx_context::sender(ctx),
-        fee_paid: rules.paint_coin_fee(),
-        new_price_multiplier: canvas.pixels[x][y].price_multiplier(),
-        last_painted_at: canvas.pixels[x][y].last_painted_at(),
-        in_paint: true,
-    });
 }
 
 /// Calculates the total fee required to paint provided pixels

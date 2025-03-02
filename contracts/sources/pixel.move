@@ -1,6 +1,7 @@
 module suiplace::pixel;
 
 use std::string::String;
+use std::u64;
 use sui::clock::Clock;
 use sui::coin::Coin;
 use sui::sui::SUI;
@@ -13,7 +14,7 @@ const EInsufficientFee: vector<u8> = b"Insufficient fee";
 /// Represents a coordinate on a grid (X, Y coordinates)
 public struct Coordinates(u64, u64) has copy, drop, store;
 
-public struct Pixel has store {
+public struct Pixel has store, drop {
     coordinates: Coordinates,
     last_painter: Option<address>,
     price_multiplier: u64,
@@ -35,9 +36,6 @@ public fun new_coordinates(x: u64, y: u64): Coordinates {
     Coordinates(x, y)
 }
 
-// make entry and rethink how to deal with fees
-// have coin splitting logic in the PTB layer
-// other option is to have coin be mutable
 public(package) fun paint(
     pixel: &mut Pixel,
     color: String,
@@ -46,9 +44,9 @@ public(package) fun paint(
     clock: &Clock,
     ctx: &TxContext,
 ) {
-    let fee_amount = payment.value();
+    let fee_amount = pixel.calculate_fee(rules, clock);
 
-    assert!(fee_amount == rules.base_paint_fee(), EInsufficientFee);
+    assert!(payment.value() == fee_amount, EInsufficientFee);
 
     pixel.route_fees(rules, fee_amount, payment, clock);
 
@@ -80,7 +78,7 @@ public fun calculate_fee(
     if (pixel.is_multiplier_expired(rules, clock)) {
         rules.base_paint_fee()
     } else {
-        rules.base_paint_fee() * pixel.price_multiplier
+        rules.base_paint_fee() * u64::pow(2, (pixel.price_multiplier - 1) as u8)
     }
 }
 
@@ -102,6 +100,10 @@ public fun last_painted_at(pixel: &Pixel): u64 {
 
 public fun price_multiplier(pixel: &Pixel): u64 {
     pixel.price_multiplier
+}
+
+public fun color(pixel: &Pixel): String {
+    pixel.color
 }
 
 fun update(

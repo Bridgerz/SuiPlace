@@ -7,9 +7,16 @@ use sui::random::{Random, new_generator};
 use sui::transfer::Receiving;
 use sui::vec_map::VecMap;
 use suiplace::canvas_admin::CanvasAdminCap;
+use suiplace::events;
 
 const BPS_SCALE: u64 = 10_000; // scaling factor for basis points
 const RAND_MAX: u32 = 1_000_000_000;
+
+#[error]
+const EWheelIsPaused: vector<u8> = b"Wheel is paused";
+
+#[error]
+const EInvalidTicket: vector<u8> = b"Ticket is not valid for spinning";
 
 public struct RewardWheel has key, store {
     id: UID,
@@ -39,9 +46,9 @@ public fun create_reward_wheel(
         metadata: metadata,
     };
 
-    transfer::share_object(wheel);
+    events::emit_wheel_created_event(wheel.id.to_inner(), ctx.sender());
 
-    // TODO: emit event
+    transfer::share_object(wheel);
 }
 
 public fun add_rewards<T: key + store>(
@@ -50,8 +57,6 @@ public fun add_rewards<T: key + store>(
     mut items: vector<T>,
     ctx: &mut TxContext,
 ) {
-    // TODO: error message
-    assert!(!wheel.paused);
     let offset = wheel.rewards.length();
     let mut i = offset as u32;
     while (i < (items.length() + offset) as u32) {
@@ -67,8 +72,6 @@ public fun add_rewards<T: key + store>(
     };
 
     items.destroy_empty();
-
-    // TODO: emit event
 }
 
 public fun withdraw_from_reward_wheel<T: key + store>(
@@ -91,11 +94,14 @@ public fun set_reward_wheel_metadata(
     wheel.metadata = metadata;
 }
 
-entry fun spin(wheel: &mut RewardWheel, ticket: Ticket, r: &Random, ctx: &mut TxContext) {
-    // TODO: error message
-    assert!(!wheel.paused);
-    // TODO: error message
-    assert!(ticket.valid);
+entry fun spin(
+    wheel: &mut RewardWheel,
+    ticket: Ticket,
+    r: &Random,
+    ctx: &mut TxContext,
+) {
+    assert!(!wheel.paused, EWheelIsPaused);
+    assert!(ticket.valid, EInvalidTicket);
     let mut generator = r.new_generator(ctx);
     let index = generator.generate_u32_in_range(
         1,
@@ -109,15 +115,15 @@ entry fun spin(wheel: &mut RewardWheel, ticket: Ticket, r: &Random, ctx: &mut Tx
         reward,
         ctx.sender(),
     );
-
-    // TODO: emit event
 }
 
-public fun claim_reward<T: key + store>(reward: &mut Reward, reward_ticket: Receiving<T>): T {
+public fun claim_reward<T: key + store>(
+    reward: &mut Reward,
+    reward_ticket: Receiving<T>,
+): T {
     transfer::public_receive(&mut reward.id, reward_ticket)
 }
 
-/// Anyone can play and receive a ticket.
 public(package) fun create_ticket(
     odds: u64,
     num_chances: u8,
@@ -160,7 +166,10 @@ public fun rewards_mut(wheel: &mut RewardWheel): &mut ObjectBag {
 }
 
 #[test_only]
-public fun create_ticket_for_testing(is_valid: bool, ctx: &mut TxContext): Ticket {
+public fun create_ticket_for_testing(
+    is_valid: bool,
+    ctx: &mut TxContext,
+): Ticket {
     Ticket {
         id: object::new(ctx),
         valid: is_valid,
