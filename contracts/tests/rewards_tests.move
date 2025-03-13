@@ -17,6 +17,74 @@ public struct TestReward has key, store {
 }
 
 #[test]
+fun test_create_ticket() {
+    let system = @0x0;
+
+    let mut scenario = test_scenario::begin(system);
+    random::create_for_testing(scenario.ctx());
+
+    scenario.next_tx(system);
+
+    let mut random: Random = scenario.take_shared();
+    random.update_randomness_state_for_testing(
+        0,
+        x"1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F",
+        scenario.ctx(),
+    );
+
+    scenario.next_tx(system);
+
+    let ticket1 = rewards::create_ticket(
+        1000,
+        1,
+        &random,
+        scenario.ctx(),
+    );
+
+    assert!(!ticket1.is_valid());
+
+    let ticket2 = rewards::create_ticket(
+        2,
+        500,
+        &random,
+        scenario.ctx(),
+    );
+    assert!(!ticket2.is_valid());
+
+    let ticket3 = rewards::create_ticket(
+        1000,
+        500,
+        &random,
+        scenario.ctx(),
+    );
+    assert!(ticket3.is_valid());
+
+    let ticket4 = rewards::create_ticket(
+        100,
+        500,
+        &random,
+        scenario.ctx(),
+    );
+    assert!(ticket4.is_valid());
+
+    let ticket5 = rewards::create_ticket(
+        1000,
+        10,
+        &random,
+        scenario.ctx(),
+    );
+    assert!(!ticket5.is_valid());
+
+    test_scenario::return_shared(random);
+    transfer::public_transfer(ticket1, system);
+    transfer::public_transfer(ticket2, system);
+    transfer::public_transfer(ticket3, system);
+    transfer::public_transfer(ticket4, system);
+    transfer::public_transfer(ticket5, system);
+    scenario.end();
+}
+
+#[test]
 fun spin_wheel() {
     create_test_wheel();
 

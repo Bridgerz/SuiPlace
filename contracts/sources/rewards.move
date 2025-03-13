@@ -1,7 +1,6 @@
 module suiplace::rewards;
 
 use std::string::String;
-use std::u64;
 use sui::object_bag::{Self, ObjectBag};
 use sui::random::{Random, new_generator};
 use sui::transfer::Receiving;
@@ -126,31 +125,28 @@ public fun claim_reward<T: key + store>(
 
 public(package) fun create_ticket(
     odds: u64,
-    num_chances: u8,
+    num_chances: u16,
     r: &Random,
     ctx: &mut TxContext,
 ): Ticket {
     let mut generator = r.new_generator(ctx);
 
-    let base_full = u64::pow(BPS_SCALE, num_chances);
-    let base_missed = u64::pow(BPS_SCALE - odds, num_chances);
-    let success_prob_num = base_full - base_missed;
-    let success_prob_den = base_full;
+    let mut running = BPS_SCALE;
+    let mut i = 0;
+    while (i < num_chances) {
+        running = (running * (BPS_SCALE - odds)) / BPS_SCALE;
+        i = i + 1;
+    };
 
-    let winner = generator.generate_u32_in_range(1, RAND_MAX);
+    let prob_success_scaled = BPS_SCALE - running;
+    let threshold = (prob_success_scaled * (RAND_MAX as u64)) / BPS_SCALE;
 
-    let threshold = (success_prob_num * (RAND_MAX as u64)) / success_prob_den;
+    let roll = generator.generate_u32_in_range(1, RAND_MAX);
+    let success = (roll as u64) <= threshold;
 
-    if ((winner as u64) <= threshold) {
-        Ticket {
-            id: object::new(ctx),
-            valid: true,
-        }
-    } else {
-        Ticket {
-            id: object::new(ctx),
-            valid: false,
-        }
+    Ticket {
+        id: object::new(ctx),
+        valid: success,
     }
 }
 
@@ -163,6 +159,10 @@ public fun destroy_ticket(ticket: Ticket) {
 
 public fun rewards_mut(wheel: &mut RewardWheel): &mut ObjectBag {
     &mut wheel.rewards
+}
+
+public fun is_valid(ticket: &Ticket): bool {
+    ticket.valid
 }
 
 #[test_only]

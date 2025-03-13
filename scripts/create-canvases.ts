@@ -1,19 +1,11 @@
 #!/usr/bin/env ts-node
 
+import * as dotenv from "dotenv";
+dotenv.config();
 import { SuiClient } from "@mysten/sui/client";
 import { Transaction } from "@mysten/sui/transactions";
 
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-
-const PACKAGE_ID =
-  "0x2a54286c2f25d35e7254db31ce76fe567d8fd03aad2445e23551fbb1820dbc23";
-const META_CANVAS_ID =
-  "0x396d5e541ccb36a2315cf580bd918442941fad93d4fcd967811dd9376527328d";
-const META_CANVAS_CAP =
-  "0x4d934b1de0afc2c8230271f70c7fae65be0ef2d1b37fb867ac2d5e04f50705dd";
-const PRIVATE_KEY_BASE64 =
-  "suiprivkey1qr0c220rnccmj0hn3l3clren2lp9zdvx04qkvudvav9zsuxxt0lqgrvdadz";
-const RPC_URL = "https://sui-testnet-rpc.publicnode.com:443";
 
 import * as readline from "readline";
 
@@ -51,6 +43,12 @@ function numCanvasesToNextRing(length: number): number {
 }
 
 async function main() {
+  const RPC_URL = process.env.RPC_URL!;
+  const PRIVATE_KEY_BASE64 = process.env.PRIVATE_KEY_BASE64!;
+  const PACKAGE_ID = process.env.PACKAGE_ID!;
+  const META_CANVAS_ID = process.env.META_CANVAS_ID!;
+  const CANVAS_ADMIN_CAP = process.env.CANVAS_ADMIN_CAP!;
+
   // create a client connected to devnet
   const client = new SuiClient({ url: RPC_URL });
 
@@ -80,7 +78,7 @@ async function main() {
     while (txs < 7 && toAdd > 0) {
       tx.moveCall({
         target: `${PACKAGE_ID}::meta_canvas::add_new_canvas`,
-        arguments: [tx.object(META_CANVAS_ID), tx.object(META_CANVAS_CAP)],
+        arguments: [tx.object(META_CANVAS_ID), tx.object(CANVAS_ADMIN_CAP)],
       });
       txs += 1;
       toAdd -= 1;
@@ -104,7 +102,6 @@ async function main() {
       await waitForInput(
         `Insufficient funds. Need ${total_gas_fees} but only have ${balance}. Send Sui to ${address}. Press enter to continue...`
       );
-      return;
     }
 
     await waitForInput(
@@ -118,6 +115,8 @@ async function main() {
   }
 
   console.log("All new canvases added successfully!");
+
+  process.exit(0);
 }
 
 // Run the script

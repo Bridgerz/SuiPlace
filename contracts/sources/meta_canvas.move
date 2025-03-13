@@ -5,12 +5,14 @@ use std::u64;
 use sui::clock::Clock;
 use sui::coin::Coin;
 use sui::object_table::{Self, ObjectTable};
+use sui::random::Random;
 use sui::sui::SUI;
 use suiplace::canvas::{Self, Canvas};
 use suiplace::canvas_admin::{Self, CanvasRules, CanvasAdminCap};
 use suiplace::events;
 use suiplace::paint_coin::PAINT_COIN;
 use suiplace::pixel::{Self, Pixel, Coordinates};
+use suiplace::rewards;
 
 const CANVAS_WIDTH: u64 = 45;
 
@@ -63,6 +65,7 @@ entry fun paint_pixels(
     y: vector<u64>,
     colors: vector<String>,
     clock: &Clock,
+    random: &Random,
     mut payment: Coin<SUI>,
     ctx: &mut TxContext,
 ) {
@@ -70,6 +73,7 @@ entry fun paint_pixels(
         x.length() == y.length() && y.length() == colors.length(),
         EInvalidPaintData,
     );
+    let total_pixels = x.length();
     let mut i = 0;
     while (i < x.length()) {
         let canvas_coordinates = get_canvas_coordinates_from_pixel(x[i], y[i]);
@@ -97,6 +101,15 @@ entry fun paint_pixels(
         );
         i = i + 1;
     };
+
+    let ticket = rewards::create_ticket(
+        meta_canvas.ticket_odds,
+        total_pixels as u16,
+        random,
+        ctx,
+    );
+
+    transfer::public_transfer(ticket, ctx.sender());
 
     events::emit_pixels_painted_event(x, y, colors);
 

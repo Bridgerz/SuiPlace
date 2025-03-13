@@ -4,6 +4,7 @@ module suiplace::meta_canvas_tests;
 use std::string::String;
 use sui::clock;
 use sui::coin;
+use sui::random::{Self, Random};
 use sui::sui::SUI;
 use sui::test_scenario;
 use suiplace::canvas_admin;
@@ -31,10 +32,22 @@ fun test_get_canvas_coordinates_from_pixel() {
 fun test_paint_pixels() {
     let (admin, painter) = (@0x1, @0x2);
 
-    let mut scenario = test_scenario::begin(admin);
+    let mut scenario = test_scenario::begin(@0x0);
+    random::create_for_testing(scenario.ctx());
+
+    scenario.next_tx(admin);
 
     let canvas_cap = canvas_admin::create_canvas_admin_cap_for_testing(scenario.ctx());
     let mut meta_canvas = meta_canvas::create_meta_canvas_for_testing(scenario.ctx());
+
+    scenario.next_tx(@0x0);
+
+    let mut random: Random = scenario.take_shared();
+    random.update_randomness_state_for_testing(
+        0,
+        x"1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F",
+        scenario.ctx(),
+    );
 
     scenario.next_tx(admin);
 
@@ -77,6 +90,7 @@ fun test_paint_pixels() {
         pixels_y,
         colors,
         &clock,
+        &random,
         payment,
         scenario.ctx(),
     );
@@ -131,6 +145,8 @@ fun test_paint_pixels() {
     coin::burn_for_testing(coin);
     transfer::public_transfer(meta_canvas, admin);
     transfer::public_transfer(canvas_cap, admin);
+    test_scenario::return_shared(random);
+
     scenario.end();
 }
 
@@ -171,7 +187,10 @@ fun test_paint_pixels_with_paint() {
     let pixels_y = vector<u64>[44, 45, 45];
     let colors = vector<String>[color, color, color];
 
-    let payment = coin::mint_for_testing<PAINT_COIN>(3_00000000, scenario.ctx());
+    let payment = coin::mint_for_testing<PAINT_COIN>(
+        3_00000000,
+        scenario.ctx(),
+    );
 
     meta_canvas.paint_pixels_with_paint(
         pixels_x,
