@@ -109,7 +109,13 @@ entry fun paint_pixels(
         ctx,
     );
 
-    transfer::public_transfer(ticket, ctx.sender());
+    events::emit_reward_event(object::id(&ticket), ticket.is_valid());
+
+    if (ticket.is_valid()) {
+        transfer::public_transfer(ticket, ctx.sender());
+    } else {
+        transfer::public_transfer(ticket, @0x0);
+    };
 
     events::emit_pixels_painted_event(x, y, colors);
 

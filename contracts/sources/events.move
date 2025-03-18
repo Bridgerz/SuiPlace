@@ -19,6 +19,11 @@ public struct PixelsPaintedEvent has copy, drop {
     color: vector<String>,
 }
 
+public struct RewardEvent has copy, drop {
+    ticket_id: ID,
+    won: bool,
+}
+
 public(package) fun emit_wheel_created_event(wheel_id: ID, creator: address) {
     event::emit(WheelCratedEvent {
         wheel_id,
@@ -42,5 +47,12 @@ public(package) fun emit_pixels_painted_event(
         pixels_x,
         pixels_y,
         color,
+    });
+}
+
+public(package) fun emit_reward_event(ticket_id: ID, won: bool) {
+    event::emit(RewardEvent {
+        ticket_id,
+        won,
     });
 }
