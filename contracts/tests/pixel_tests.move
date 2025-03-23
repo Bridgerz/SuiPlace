@@ -2,8 +2,6 @@
 module suiplace::pixel_tests;
 
 use sui::clock;
-use sui::coin;
-use sui::sui::SUI;
 use sui::test_scenario;
 use suiplace::canvas_admin;
 use suiplace::pixel;
@@ -33,15 +31,12 @@ fun test_paint_individual_pixel() {
     assert!(pixel.last_painter() == option::none());
     assert!(pixel.last_painted_at() == 0);
 
-    let mut payment = coin::mint_for_testing<SUI>(100000000, scenario.ctx());
-
     scenario.next_tx(painter);
 
     pixel::paint(
         &mut pixel,
         color,
         &canvas_rules,
-        payment,
         &clock,
         scenario.ctx(),
     );
@@ -62,15 +57,10 @@ fun test_paint_individual_pixel() {
 
     scenario.next_tx(painter);
 
-    payment = coin::mint_for_testing<SUI>(200000000, scenario.ctx());
-
-    scenario.next_tx(painter);
-
     pixel::paint(
         &mut pixel,
         color,
         &canvas_rules,
-        payment,
         &clock,
         scenario.ctx(),
     );

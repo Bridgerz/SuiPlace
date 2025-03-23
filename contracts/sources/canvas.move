@@ -12,6 +12,9 @@ use suiplace::pixel::{Self, Pixel, Coordinates};
 const CANVAS_WIDTH: u64 = 45;
 const VERSION: u64 = 1;
 
+#[error]
+const EInsufficientFee: vector<u8> = b"Insufficient fee";
+
 /// Represents a group of pixels on a grid
 public struct Canvas has key, store {
     id: UID,
@@ -55,7 +58,13 @@ public(package) fun paint_pixel(
     clock: &Clock,
     ctx: &TxContext,
 ) {
-    canvas.pixels[x][y].paint(color, rules, payment, clock, ctx);
+    let fee_amount = canvas.pixels[x][y].calculate_fee(rules, clock);
+
+    assert!(payment.value() == fee_amount, EInsufficientFee);
+
+    route_fees(&canvas.pixels[x][y], rules, fee_amount, payment, clock);
+
+    canvas.pixels[x][y].paint(color, rules, clock, ctx);
 }
 
 public(package) fun paint_pixel_with_paint(
@@ -68,7 +77,11 @@ public(package) fun paint_pixel_with_paint(
     clock: &Clock,
     ctx: &TxContext,
 ) {
-    canvas.pixels[x][y].paint_with_paint(color, rules, payment, clock, ctx);
+    assert!(payment.value() == rules.paint_coin_fee(), EInsufficientFee);
+
+    transfer::public_transfer(payment, rules.canvas_treasury());
+
+    canvas.pixels[x][y].paint(color, rules, clock, ctx);
 }
 
 /// Calculates the total fee required to paint provided pixels
@@ -108,4 +121,29 @@ public fun id(canvas: &Canvas): ID {
 // Immutable reference to `pixel`
 public fun pixel(canvas: &Canvas, coordinates: Coordinates): &Pixel {
     &canvas.pixels[coordinates.x()][coordinates.y()]
+}
+
+fun route_fees(
+    pixel: &Pixel,
+    rules: &CanvasRules,
+    fee_amount: u64,
+    payment: Coin<SUI>,
+    clock: &Clock,
+) {
+    let cost = pixel.calculate_fee(rules, clock);
+    assert!(fee_amount >= cost, EInsufficientFee);
+
+    let mut paint_fee_recipient = pixel
+        .last_painter()
+        .borrow_with_default(&rules.canvas_treasury());
+
+    // if pixel was reset (or first painted), paint fee goes to treasury
+    if (cost == rules.base_paint_fee()) {
+        paint_fee_recipient = &rules.canvas_treasury();
+    };
+
+    transfer::public_transfer(
+        payment,
+        *paint_fee_recipient,
+    );
 }

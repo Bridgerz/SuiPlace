@@ -3,13 +3,7 @@ module suiplace::pixel;
 use std::string::String;
 use std::u64;
 use sui::clock::Clock;
-use sui::coin::Coin;
-use sui::sui::SUI;
 use suiplace::canvas_admin::CanvasRules;
-use suiplace::paint_coin::PAINT_COIN;
-
-#[error]
-const EInsufficientFee: vector<u8> = b"Insufficient fee";
 
 /// Represents a coordinate on a grid (X, Y coordinates)
 public struct Coordinates(u64, u64) has copy, drop, store;
@@ -40,32 +34,9 @@ public(package) fun paint(
     pixel: &mut Pixel,
     color: String,
     rules: &CanvasRules,
-    payment: Coin<SUI>,
     clock: &Clock,
     ctx: &TxContext,
 ) {
-    let fee_amount = pixel.calculate_fee(rules, clock);
-
-    assert!(payment.value() == fee_amount, EInsufficientFee);
-
-    pixel.route_fees(rules, fee_amount, payment, clock);
-
-    // Update pixel data
-    pixel.update(color, rules, clock, option::some(ctx.sender()));
-}
-
-public(package) fun paint_with_paint(
-    pixel: &mut Pixel,
-    color: String,
-    rules: &CanvasRules,
-    payment: Coin<PAINT_COIN>,
-    clock: &Clock,
-    ctx: &TxContext,
-) {
-    assert!(payment.value() == rules.paint_coin_fee(), EInsufficientFee);
-
-    transfer::public_transfer(payment, rules.canvas_treasury());
-
     // Update pixel data
     pixel.update(color, rules, clock, option::some(ctx.sender()));
 }
@@ -125,31 +96,6 @@ fun update(
     } else {
         pixel.price_multiplier = pixel.price_multiplier + 1;
     }
-}
-
-fun route_fees(
-    pixel: &Pixel,
-    rules: &CanvasRules,
-    fee_amount: u64,
-    payment: Coin<SUI>,
-    clock: &Clock,
-) {
-    let cost = pixel.calculate_fee(rules, clock);
-    assert!(fee_amount >= cost, EInsufficientFee);
-
-    let mut paint_fee_recipient = pixel
-        .last_painter
-        .borrow_with_default(&rules.canvas_treasury());
-
-    // if pixel was reset (or first painted), paint fee goes to treasury
-    if (cost == rules.base_paint_fee()) {
-        paint_fee_recipient = &rules.canvas_treasury();
-    };
-
-    transfer::public_transfer(
-        payment,
-        *paint_fee_recipient,
-    );
 }
 
 public fun x(key: Coordinates): u64 {

@@ -144,12 +144,7 @@ entry fun paint_pixels_with_paint(
             y[i],
             canvas_coordinates,
         );
-        let fee = canvas.calculate_pixel_paint_fee(
-            &meta_canvas.rules,
-            offset_x,
-            offset_y,
-            clock,
-        );
+        let fee = meta_canvas.rules.paint_coin_fee();
         let pixel_payment = payment.split(fee, ctx);
         canvas.paint_pixel_with_paint(
             &meta_canvas.rules,
