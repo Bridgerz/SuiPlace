@@ -83,6 +83,8 @@ fun test_paint_pixels() {
         &clock,
     );
 
+    assert!(fee_amount == 300000000);
+
     let payment = coin.split(fee_amount, scenario.ctx());
 
     meta_canvas.paint_pixels(
@@ -96,6 +98,14 @@ fun test_paint_pixels() {
     );
 
     scenario.next_tx(admin);
+
+    let new_fee_amount = meta_canvas.calculate_pixels_paint_fee(
+        pixels_x,
+        pixels_y,
+        &clock,
+    );
+
+    assert!(new_fee_amount == 600000000);
 
     // get painted canvases
 

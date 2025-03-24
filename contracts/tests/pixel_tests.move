@@ -30,6 +30,8 @@ fun test_paint_individual_pixel() {
     assert!(pixel.price_multiplier() == 1);
     assert!(pixel.last_painter() == option::none());
     assert!(pixel.last_painted_at() == 0);
+    let cost = pixel::calculate_fee(&pixel, &canvas_rules, &clock);
+    assert!(cost == 100000000);
 
     scenario.next_tx(painter);
 

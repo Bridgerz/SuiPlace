@@ -58,7 +58,11 @@ public fun is_multiplier_expired(
     rules: &CanvasRules,
     clock: &Clock,
 ): bool {
-    clock.timestamp_ms() - pixel.last_painted_at > rules.pixel_price_multiplier_reset_ms()
+    if (pixel.last_painted_at == 0) {
+        false
+    } else {
+        clock.timestamp_ms() - pixel.last_painted_at > rules.pixel_price_multiplier_reset_ms()
+    }
 }
 
 public fun last_painter(pixel: &Pixel): Option<address> {
