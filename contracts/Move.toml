@@ -1,7 +1,6 @@
 [package]
 name = "suiplace"
 edition = "2024.beta"
-published-at = "0xf9e0059a201d9716a74502dada9fc4808496a0cf99e6eac3b9006b40d8ce7b34"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
