@@ -53,24 +53,22 @@ public fun create_reward_wheel(
 public fun add_rewards<T: key + store>(
     wheel: &mut RewardWheel,
     _: &CanvasAdminCap,
-    mut items: vector<T>,
+    items: vector<T>,
     ctx: &mut TxContext,
 ) {
-    let offset = wheel.rewards.length();
-    let mut i = offset as u32;
-    while (i < (items.length() + offset) as u32) {
+    items.do!(|item| {
         // create reward object
         let reward = Reward {
             id: object::new(ctx),
         };
-        let reward_address = object::id(&reward).to_address();
-        transfer::public_transfer(items.pop_back(), reward_address);
-        // add reward to item
-        wheel.rewards.add(i, reward);
-        i = i + 1;
-    };
 
-    items.destroy_empty();
+        let reward_address = object::id(&reward).to_address();
+        transfer::public_transfer(item, reward_address);
+
+        // add reward to wheel
+        let i = wheel.rewards.length();
+        wheel.rewards.add(i as u32, reward);
+    });
 }
 
 public fun withdraw_from_reward_wheel<T: key + store>(
@@ -93,12 +91,7 @@ public fun set_reward_wheel_metadata(
     wheel.metadata = metadata;
 }
 
-entry fun spin(
-    wheel: &mut RewardWheel,
-    ticket: Ticket,
-    r: &Random,
-    ctx: &mut TxContext,
-) {
+entry fun spin(wheel: &mut RewardWheel, ticket: Ticket, r: &Random, ctx: &mut TxContext) {
     assert!(!wheel.paused, EWheelIsPaused);
     assert!(ticket.valid, EInvalidTicket);
     let mut generator = r.new_generator(ctx);
@@ -116,10 +109,7 @@ entry fun spin(
     );
 }
 
-public fun claim_reward<T: key + store>(
-    reward: &mut Reward,
-    reward_ticket: Receiving<T>,
-): T {
+public fun claim_reward<T: key + store>(reward: &mut Reward, reward_ticket: Receiving<T>): T {
     transfer::public_receive(&mut reward.id, reward_ticket)
 }
 
@@ -132,11 +122,9 @@ public(package) fun create_ticket(
     let mut generator = r.new_generator(ctx);
 
     let mut running = BPS_SCALE;
-    let mut i = 0;
-    while (i < num_chances) {
+    num_chances.do!(|_| {
         running = (running * (BPS_SCALE - odds)) / BPS_SCALE;
-        i = i + 1;
-    };
+    });
 
     let prob_success_scaled = BPS_SCALE - running;
     let threshold = (prob_success_scaled * (RAND_MAX as u64)) / BPS_SCALE;
@@ -166,10 +154,7 @@ public fun is_valid(ticket: &Ticket): bool {
 }
 
 #[test_only]
-public fun create_ticket_for_testing(
-    is_valid: bool,
-    ctx: &mut TxContext,
-): Ticket {
+public fun create_ticket_for_testing(is_valid: bool, ctx: &mut TxContext): Ticket {
     Ticket {
         id: object::new(ctx),
         valid: is_valid,

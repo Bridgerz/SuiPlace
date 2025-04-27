@@ -22,22 +22,15 @@ public struct Canvas has key, store {
     version: u64,
 }
 
-public(package) fun new_canvas(
-    _: &CanvasAdminCap,
-    ctx: &mut TxContext,
-): Canvas {
-    let mut x = 0;
+public(package) fun new_canvas(_: &CanvasAdminCap, ctx: &mut TxContext): Canvas {
     let mut pixels: vector<vector<Pixel>> = vector::empty();
-    while (x < CANVAS_WIDTH) {
-        let mut y = 0;
+    CANVAS_WIDTH.do!(|x| {
         let mut row: vector<Pixel> = vector::empty();
-        while (y < CANVAS_WIDTH) {
+        CANVAS_WIDTH.do!(|y| {
             row.push_back(pixel::new_pixel(x, y));
-            y = y + 1;
-        };
+        });
         pixels.push_back(row);
-        x = x + 1;
-    };
+    });
 
     let canvas = Canvas {
         id: object::new(ctx),
@@ -93,12 +86,9 @@ public fun calculate_pixels_paint_fee(
     clock: &Clock,
 ): u64 {
     let mut cost = 0;
-    let mut i = 0;
-    while (i < x.length()) {
-        cost =
-            cost + canvas.calculate_pixel_paint_fee(rules, x[i], y[i], clock);
-        i = i + 1;
-    };
+    x.length().do!(|i| {
+        cost = cost + canvas.calculate_pixel_paint_fee(rules, x[i], y[i], clock);
+    });
     cost
 }
 

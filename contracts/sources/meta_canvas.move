@@ -17,8 +17,7 @@ use suiplace::rewards;
 const CANVAS_WIDTH: u64 = 45;
 
 #[error]
-const EInvalidPaintData: vector<u8> =
-    b"Must provide equal number of x, y, and color values";
+const EInvalidPaintData: vector<u8> = b"Must provide equal number of x, y, and color values";
 
 /// Represents the MetaCanvas, a parent structure holding multiple canvases
 public struct MetaCanvas has key, store {
@@ -69,14 +68,10 @@ entry fun paint_pixels(
     mut payment: Coin<SUI>,
     ctx: &mut TxContext,
 ) {
-    assert!(
-        x.length() == y.length() && y.length() == colors.length(),
-        EInvalidPaintData,
-    );
+    assert!(x.length() == y.length() && y.length() == colors.length(), EInvalidPaintData);
     let total_pixels = x.length();
     let payment_amount = payment.value();
-    let mut i = 0;
-    while (i < x.length()) {
+    x.length().do!(|i| {
         let canvas_coordinates = get_canvas_coordinates_from_pixel(x[i], y[i]);
         let canvas = meta_canvas.canvases.borrow_mut(canvas_coordinates);
         let (offset_x, offset_y) = offset_pixel_coordinates(
@@ -100,8 +95,7 @@ entry fun paint_pixels(
             clock,
             ctx,
         );
-        i = i + 1;
-    };
+    });
 
     let ticket = rewards::create_ticket(
         meta_canvas.ticket_odds,
@@ -138,13 +132,9 @@ entry fun paint_pixels_with_paint(
     mut payment: Coin<PAINT_COIN>,
     ctx: &mut TxContext,
 ) {
-    assert!(
-        x.length() == y.length() && y.length() == colors.length(),
-        EInvalidPaintData,
-    );
-    let mut i = 0;
+    assert!(x.length() == y.length() && y.length() == colors.length(), EInvalidPaintData);
     let payment_amount = payment.value();
-    while (i < x.length()) {
+    x.length().do!(|i| {
         let canvas_coordinates = get_canvas_coordinates_from_pixel(x[i], y[i]);
         let canvas = meta_canvas.canvases.borrow_mut(canvas_coordinates);
         let (offset_x, offset_y) = offset_pixel_coordinates(
@@ -163,8 +153,7 @@ entry fun paint_pixels_with_paint(
             clock,
             ctx,
         );
-        i = i + 1;
-    };
+    });
 
     events::emit_pixels_painted_event(
         x,
@@ -231,11 +220,7 @@ public fun calculate_next_canvas_location(length: u64): Coordinates {
     }
 }
 
-public fun offset_pixel_coordinates(
-    x: u64,
-    y: u64,
-    canvas_coordinates: Coordinates,
-): (u64, u64) {
+public fun offset_pixel_coordinates(x: u64, y: u64, canvas_coordinates: Coordinates): (u64, u64) {
     let offset_x = x - (canvas_coordinates.x() * CANVAS_WIDTH);
     let offset_y = y - (canvas_coordinates.y() * CANVAS_WIDTH);
     (offset_x, offset_y)
@@ -248,8 +233,7 @@ public fun calculate_pixels_paint_fee(
     clock: &Clock,
 ): u64 {
     let mut total_fee = 0;
-    let mut i = 0;
-    while (i < x.length()) {
+    x.length().do!(|i| {
         let canvas_coordinates = get_canvas_coordinates_from_pixel(x[i], y[i]);
         let canvas = meta_canvas.canvases.borrow(canvas_coordinates);
         let (offset_x, offset_y) = offset_pixel_coordinates(
@@ -259,15 +243,11 @@ public fun calculate_pixels_paint_fee(
         );
         total_fee =
             total_fee + canvas.calculate_pixel_paint_fee(&meta_canvas.rules, offset_x, offset_y, clock);
-        i = i + 1;
-    };
+    });
     total_fee
 }
 
-public fun get_canvas(
-    meta_canvas: &MetaCanvas,
-    coordinates: Coordinates,
-): &Canvas {
+public fun get_canvas(meta_canvas: &MetaCanvas, coordinates: Coordinates): &Canvas {
     meta_canvas.canvases.borrow(coordinates)
 }
 
@@ -299,11 +279,7 @@ public fun update_canvas_treasury(
     meta_canvas.rules.update_canvas_treasury(canvas_treasury);
 }
 
-public fun update_ticket_odds(
-    _: &CanvasAdminCap,
-    meta_canvas: &mut MetaCanvas,
-    ticket_odds: u64,
-) {
+public fun update_ticket_odds(_: &CanvasAdminCap, meta_canvas: &mut MetaCanvas, ticket_odds: u64) {
     meta_canvas.ticket_odds = ticket_odds;
 }
 
