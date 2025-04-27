@@ -70,6 +70,7 @@ entry fun paint_pixels(
 ) {
     assert!(x.length() == y.length() && y.length() == colors.length(), EInvalidPaintData);
     let total_pixels = x.length();
+    let payment_amount = payment.value();
     x.length().do!(|i| {
         let canvas_coordinates = get_canvas_coordinates_from_pixel(x[i], y[i]);
         let canvas = meta_canvas.canvases.borrow_mut(canvas_coordinates);
@@ -111,7 +112,13 @@ entry fun paint_pixels(
         transfer::public_transfer(ticket, @0x0);
     };
 
-    events::emit_pixels_painted_event(x, y, colors);
+    events::emit_pixels_painted_event(
+        x,
+        y,
+        colors,
+        ctx.sender(),
+        payment_amount - payment.value(),
+    );
 
     transfer::public_transfer(payment, ctx.sender());
 }
@@ -126,6 +133,7 @@ entry fun paint_pixels_with_paint(
     ctx: &mut TxContext,
 ) {
     assert!(x.length() == y.length() && y.length() == colors.length(), EInvalidPaintData);
+    let payment_amount = payment.value();
     x.length().do!(|i| {
         let canvas_coordinates = get_canvas_coordinates_from_pixel(x[i], y[i]);
         let canvas = meta_canvas.canvases.borrow_mut(canvas_coordinates);
@@ -147,7 +155,13 @@ entry fun paint_pixels_with_paint(
         );
     });
 
-    events::emit_pixels_painted_event(x, y, colors);
+    events::emit_pixels_painted_event(
+        x,
+        y,
+        colors,
+        ctx.sender(),
+        payment_amount - payment.value(),
+    );
 
     transfer::public_transfer(payment, ctx.sender());
 }
