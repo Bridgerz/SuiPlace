@@ -17,8 +17,6 @@ public struct PixelsPaintedEvent has copy, drop {
     pixels_x: vector<u64>,
     pixels_y: vector<u64>,
     color: vector<String>,
-    painter: address,
-    cost: u64,
 }
 
 public struct RewardEvent has copy, drop {
@@ -44,15 +42,11 @@ public(package) fun emit_pixels_painted_event(
     pixels_x: vector<u64>,
     pixels_y: vector<u64>,
     color: vector<String>,
-    painter: address,
-    cost: u64,
 ) {
     event::emit(PixelsPaintedEvent {
         pixels_x,
         pixels_y,
         color,
-        painter,
-        cost,
     });
 }
 
