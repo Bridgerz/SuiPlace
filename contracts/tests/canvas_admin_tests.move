@@ -2,8 +2,8 @@
 module suiplace::canvas_admin_tests;
 
 use sui::test_scenario;
+use suiplace::canvas;
 use suiplace::canvas_admin;
-use suiplace::meta_canvas;
 
 #[test]
 fun test_update_pixel_price_multiplier() {
@@ -12,40 +12,43 @@ fun test_update_pixel_price_multiplier() {
     let mut scenario = test_scenario::begin(admin);
 
     let canvas_cap = canvas_admin::create_canvas_admin_cap_for_testing(scenario.ctx());
-    let mut meta_canvas = meta_canvas::create_meta_canvas_for_testing(scenario.ctx());
+    let mut canvas = canvas::create_canvas_for_testing(
+        &canvas_cap,
+        scenario.ctx(),
+    );
 
     scenario.next_tx(admin);
 
-    assert!(meta_canvas.rules().base_paint_fee() == 100000000);
-    assert!(meta_canvas.rules().pixel_price_multiplier_reset_ms() == 1000);
-    assert!(meta_canvas.rules().canvas_treasury() == admin);
+    assert!(canvas.rules().base_paint_fee() == 100000000);
+    assert!(canvas.rules().pixel_price_multiplier_reset_ms() == 1000);
+    assert!(canvas.rules().canvas_treasury() == canvas_cap.id().to_address());
 
-    meta_canvas::update_base_paint_fee(
+    canvas::update_base_paint_fee(
         &canvas_cap,
-        &mut meta_canvas,
+        &mut canvas,
         200000000,
     );
 
-    meta_canvas::update_pixel_price_multiplier_reset_ms(
+    canvas::update_pixel_price_multiplier_reset_ms(
         &canvas_cap,
-        &mut meta_canvas,
+        &mut canvas,
         2000,
     );
 
-    meta_canvas::update_canvas_treasury(
+    canvas::update_canvas_treasury(
         &canvas_cap,
-        &mut meta_canvas,
+        &mut canvas,
         @0x2,
     );
 
     scenario.next_tx(admin);
 
-    assert!(meta_canvas.rules().base_paint_fee() == 200000000);
-    assert!(meta_canvas.rules().pixel_price_multiplier_reset_ms() == 2000);
-    assert!(meta_canvas.rules().canvas_treasury() == @0x2);
+    assert!(canvas.rules().base_paint_fee() == 200000000);
+    assert!(canvas.rules().pixel_price_multiplier_reset_ms() == 2000);
+    assert!(canvas.rules().canvas_treasury() == @0x2);
 
     transfer::public_transfer(canvas_cap, admin);
-    transfer::public_transfer(meta_canvas, admin);
+    transfer::public_transfer(canvas, admin);
 
     scenario.end();
 }
