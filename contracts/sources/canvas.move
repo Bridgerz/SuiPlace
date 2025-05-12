@@ -22,7 +22,10 @@ public struct Canvas has key, store {
     version: u64,
 }
 
-public(package) fun new_canvas(_: &CanvasAdminCap, ctx: &mut TxContext): Canvas {
+public(package) fun new_canvas(
+    _: &CanvasAdminCap,
+    ctx: &mut TxContext,
+): Canvas {
     let mut pixels: vector<vector<Pixel>> = vector::empty();
     CANVAS_WIDTH.do!(|x| {
         let mut row: vector<Pixel> = vector::empty();
@@ -66,14 +69,9 @@ public(package) fun paint_pixel_with_paint(
     x: u64,
     y: u64,
     color: String,
-    payment: Coin<PAINT_COIN>,
     clock: &Clock,
     ctx: &TxContext,
 ) {
-    assert!(payment.value() == rules.paint_coin_fee(), EInsufficientFee);
-
-    transfer::public_transfer(payment, rules.canvas_treasury());
-
     canvas.pixels[x][y].paint(color, rules, clock, ctx);
 }
 
@@ -87,7 +85,8 @@ public fun calculate_pixels_paint_fee(
 ): u64 {
     let mut cost = 0;
     x.length().do!(|i| {
-        cost = cost + canvas.calculate_pixel_paint_fee(rules, x[i], y[i], clock);
+        cost =
+            cost + canvas.calculate_pixel_paint_fee(rules, x[i], y[i], clock);
     });
     cost
 }

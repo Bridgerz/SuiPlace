@@ -7,6 +7,7 @@ use sui::sui::SUI;
 use sui::test_scenario;
 use suiplace::canvas;
 use suiplace::canvas_admin;
+use suiplace::paint_coin::PAINT_COIN;
 use suiplace::pixel;
 
 #[test]
@@ -19,7 +20,8 @@ fun test_paint() {
 
     let mut scenario = test_scenario::begin(admin);
 
-    admin_cap = canvas_admin::create_canvas_admin_cap_for_testing(scenario.ctx());
+    admin_cap =
+        canvas_admin::create_canvas_admin_cap_for_testing(scenario.ctx());
     canvas = canvas::new_canvas(&admin_cap, scenario.ctx());
     canvas_rules =
         canvas_admin::new_rules(
@@ -67,11 +69,15 @@ fun test_paint() {
     // test admin gets first paint fee
     scenario.next_tx(admin);
 
-    let receivable_ids = test_scenario::receivable_object_ids_for_owner_id<Coin<SUI>>(
+    let receivable_ids = test_scenario::receivable_object_ids_for_owner_id<
+        Coin<SUI>,
+    >(
         object::id(&admin_cap),
     );
 
-    let ticket = test_scenario::receiving_ticket_by_id<Coin<SUI>>(receivable_ids[0]);
+    let ticket = test_scenario::receiving_ticket_by_id<Coin<SUI>>(
+        receivable_ids[0],
+    );
     let admin_cap_owner_balance = admin_cap.claim_fees(ticket);
 
     assert!(admin_cap_owner_balance.value() == canvas_rules.base_paint_fee());
@@ -93,7 +99,8 @@ fun test_paint_with_paint_coin() {
 
     let mut scenario = test_scenario::begin(admin);
 
-    admin_cap = canvas_admin::create_canvas_admin_cap_for_testing(scenario.ctx());
+    admin_cap =
+        canvas_admin::create_canvas_admin_cap_for_testing(scenario.ctx());
     canvas = canvas::new_canvas(&admin_cap, scenario.ctx());
     canvas_rules =
         canvas_admin::new_rules(
@@ -108,14 +115,11 @@ fun test_paint_with_paint_coin() {
     let clock = clock::create_for_testing(scenario.ctx());
     let color = b"red".to_string();
 
-    let payment = coin::mint_for_testing(1_00000000, scenario.ctx());
-
-    canvas.paint_pixel(
+    canvas.paint_pixel_with_paint(
         &canvas_rules,
         44,
         44,
         color,
-        payment,
         &clock,
         scenario.ctx(),
     );
@@ -126,19 +130,6 @@ fun test_paint_with_paint_coin() {
 
     clock::destroy_for_testing(clock);
 
-    // test admin gets first paint fee
-    scenario.next_tx(admin);
-
-    let receivable_ids = test_scenario::receivable_object_ids_for_owner_id<Coin<SUI>>(
-        object::id(&admin_cap),
-    );
-
-    let ticket = test_scenario::receiving_ticket_by_id<Coin<SUI>>(receivable_ids[0]);
-    let admin_cap_owner_balance = admin_cap.claim_fees(ticket);
-
-    assert!(admin_cap_owner_balance.value() == canvas_rules.base_paint_fee());
-
-    transfer::public_transfer(admin_cap_owner_balance, admin);
     transfer::public_transfer(admin_cap, admin);
 
     transfer::public_transfer(canvas, admin);
