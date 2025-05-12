@@ -1,6 +1,7 @@
 #[test_only]
 module suiplace::canvas_tests;
 
+use std::debug::print;
 use std::string::String;
 use sui::clock;
 use sui::coin::{Self, Coin};
@@ -96,20 +97,10 @@ fun test_paint_pixel() {
     // test admin gets first paint fee
     scenario.next_tx(admin);
 
-    let receivable_ids = test_scenario::receivable_object_ids_for_owner_id<
-        Coin<SUI>,
-    >(
-        object::id(&admin_cap),
-    );
+    let accrued_fees = canvas.fee_router_mut().get_accrued_fees(admin);
 
-    let ticket = test_scenario::receiving_ticket_by_id<Coin<SUI>>(
-        receivable_ids[0],
-    );
-    let admin_cap_owner_balance = admin_cap.claim_fees(ticket);
+    assert!(accrued_fees == canvas.rules().base_paint_fee());
 
-    assert!(admin_cap_owner_balance.value() == canvas.rules().base_paint_fee());
-
-    transfer::public_transfer(admin_cap_owner_balance, admin);
     transfer::public_transfer(admin_cap, admin);
 
     transfer::public_transfer(canvas, admin);
@@ -122,7 +113,7 @@ fun test_paint_pixel_with_paint_coin() {
     let (admin, manny) = (@0x1, @0x2);
 
     let mut canvas;
-    let mut admin_cap;
+    let admin_cap;
     let canvas_rules;
 
     let mut scenario = test_scenario::begin(admin);
@@ -166,20 +157,11 @@ fun test_paint_pixel_with_paint_coin() {
     // test treasury gets PAINT_COIN fee
     scenario.next_tx(admin);
 
-    let receivable_ids = test_scenario::receivable_object_ids_for_owner_id<
-        Coin<PAINT_COIN>,
-    >(
-        object::id(&admin_cap),
-    );
+    let admin_balance = scenario.take_from_address<Coin<PAINT_COIN>>(admin);
 
-    let ticket = test_scenario::receiving_ticket_by_id<Coin<SUI>>(
-        receivable_ids[0],
-    );
-    let admin_cap_owner_balance = admin_cap.claim_fees(ticket);
+    assert!(admin_balance.value() == canvas_rules.paint_coin_fee());
 
-    assert!(admin_cap_owner_balance.value() == canvas_rules.paint_coin_fee());
-
-    transfer::public_transfer(admin_cap_owner_balance, admin);
+    transfer::public_transfer(admin_balance, admin);
     transfer::public_transfer(admin_cap, admin);
 
     transfer::public_transfer(canvas, admin);
@@ -227,11 +209,6 @@ fun test_paint_pixels() {
     );
 
     scenario.next_tx(admin);
-
-    canvas.add_new_chunk(
-        &canvas_cap,
-        scenario.ctx(),
-    );
 
     canvas.add_new_chunk(
         &canvas_cap,
@@ -318,11 +295,6 @@ fun test_paint_pixels_with_paint() {
     );
 
     scenario.next_tx(admin);
-
-    canvas.add_new_chunk(
-        &canvas_cap,
-        scenario.ctx(),
-    );
 
     canvas.add_new_chunk(
         &canvas_cap,

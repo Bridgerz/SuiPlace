@@ -21,7 +21,7 @@ fun test_update_pixel_price_multiplier() {
 
     assert!(canvas.rules().base_paint_fee() == 100000000);
     assert!(canvas.rules().pixel_price_multiplier_reset_ms() == 1000);
-    assert!(canvas.rules().canvas_treasury() == canvas_cap.id().to_address());
+    assert!(canvas.rules().canvas_treasury() == admin);
 
     canvas::update_base_paint_fee(
         &canvas_cap,

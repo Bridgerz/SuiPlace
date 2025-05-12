@@ -1,19 +1,20 @@
 module suiplace::canvas;
 
+use std::debug::print;
 use std::string::String;
 use std::u64;
 use sui::clock::Clock;
 use sui::coin::Coin;
-use sui::dynamic_field as df;
 use sui::object_table::{Self, ObjectTable};
 use sui::random::Random;
 use sui::sui::SUI;
 use suiplace::canvas_admin::{Self, CanvasRules, CanvasAdminCap};
 use suiplace::events;
+use suiplace::fee_router::{Self, FeeRouter};
 use suiplace::paint_coin::PAINT_COIN;
 use suiplace::rewards;
 
-const CHUNK_WIDTH: u64 = 64;
+const CHUNK_WIDTH: u64 = 45;
 
 #[error]
 const EInvalidPaintData: vector<u8> =
@@ -29,10 +30,12 @@ public struct Canvas has key, store {
     chunks: ObjectTable<Coordinate, CanvasChunk>,
     rules: CanvasRules,
     ticket_odds: u64,
+    fee_router: FeeRouter,
 }
 
 public struct CanvasChunk has key, store {
     id: UID,
+    pixels: vector<vector<Pixel>>,
 }
 
 public struct Pixel has copy, drop, store {
@@ -54,6 +57,7 @@ fun init(ctx: &mut TxContext) {
             100000000,
         ),
         ticket_odds: 10000, // 10000 => 100%
+        fee_router: fee_router::new_fee_router(ctx),
     };
     transfer::share_object(canvas);
 }
@@ -64,8 +68,23 @@ public fun add_new_chunk(
     _: &CanvasAdminCap,
     ctx: &mut TxContext,
 ) {
+    let mut pixels: vector<vector<Pixel>> = vector::empty();
+    CHUNK_WIDTH.do!(|_| {
+        let mut row: vector<Pixel> = vector::empty();
+        CHUNK_WIDTH.do!(|_| {
+            row.push_back(Pixel {
+                color: b"".to_string(),
+                cost: canvas.rules.base_paint_fee(),
+                last_painter: canvas.rules.canvas_treasury(),
+                last_painted_at: 0,
+            });
+        });
+        pixels.push_back(row);
+    });
+
     let chunk = CanvasChunk {
         id: object::new(ctx),
+        pixels: pixels,
     };
 
     let total_chunks = canvas.chunks.length();
@@ -76,6 +95,10 @@ public fun add_new_chunk(
     events::emit_canvas_added_event(chunk_id, total_chunks);
 }
 
+public fun fee_router_mut(canvas: &mut Canvas): &mut FeeRouter {
+    &mut canvas.fee_router
+}
+
 entry fun paint_pixels(
     canvas: &mut Canvas,
     x: vector<u64>,
@@ -83,7 +106,7 @@ entry fun paint_pixels(
     colors: vector<String>,
     clock: &Clock,
     random: &Random,
-    mut payment: Coin<SUI>,
+    payment: Coin<SUI>,
     ctx: &mut TxContext,
 ) {
     assert!(
@@ -93,28 +116,48 @@ entry fun paint_pixels(
 
     let total_pixels = x.length();
     let payment_amount = payment.value();
+    assert!(
+        payment.value() >= canvas.calculate_pixels_paint_fee( x, y, clock),
+        EInsufficientFee,
+    );
+
+    canvas.fee_router.deposit_payment(payment);
+
     let rules = canvas.rules;
     x.length().do!(|i| {
-        let pixel = canvas.get_or_create_pixel(
-            x[i],
-            y[i],
-        );
+        let (last_painter, fee) = {
+            let pixel = canvas.pixel_mut(
+                x[i],
+                y[i],
+            );
 
-        let fee = pixel.get_cost(
-            &rules,
-            clock,
-        );
+            let last_painter = pixel.last_painter;
 
-        let pixel_payment = payment.split(fee, ctx);
+            let fee = pixel.get_cost(
+                &rules,
+                clock,
+            );
 
-        transfer::public_transfer(pixel_payment, pixel.last_painter);
+            pixel.paint(
+                &rules,
+                colors[i],
+                clock,
+                ctx,
+            );
 
-        pixel.paint(
-            &rules,
-            colors[i],
-            clock,
-            ctx,
-        );
+            if (fee == rules.base_paint_fee()) {
+                (rules.canvas_treasury(), fee)
+            } else {
+                (last_painter, fee)
+            }
+        };
+
+        canvas
+            .fee_router
+            .record_fee(
+                last_painter,
+                fee,
+            );
     });
 
     let ticket = rewards::create_ticket(
@@ -137,10 +180,8 @@ entry fun paint_pixels(
         y,
         colors,
         ctx.sender(),
-        payment_amount - payment.value(),
+        payment_amount,
     );
-
-    transfer::public_transfer(payment, ctx.sender());
 }
 
 entry fun paint_pixels_with_paint(
@@ -168,7 +209,7 @@ entry fun paint_pixels_with_paint(
     let rules = canvas.rules;
 
     x.length().do!(|i| {
-        let pixel = canvas.get_or_create_pixel(
+        let pixel = canvas.pixel_mut(
             x[i],
             y[i],
         );
@@ -225,10 +266,10 @@ public fun pixel(canvas: &Canvas, x: u64, y: u64): &Pixel {
         chunk_coordinate,
     );
 
-    df::borrow(&chunk.id, Coordinate(x, y))
+    &chunk.pixels[x][y]
 }
 
-fun get_or_create_pixel(canvas: &mut Canvas, x: u64, y: u64): &mut Pixel {
+public fun pixel_mut(canvas: &mut Canvas, x: u64, y: u64): &mut Pixel {
     let chunk_coordinate = get_chunk_coordinate_from_pixel(x, y);
     let chunk = canvas.chunks.borrow_mut(chunk_coordinate);
     let (x, y) = offset_pixel_coordinate(
@@ -236,16 +277,8 @@ fun get_or_create_pixel(canvas: &mut Canvas, x: u64, y: u64): &mut Pixel {
         y,
         chunk_coordinate,
     );
-    if (!df::exists_(&chunk.id, Coordinate(x, y))) {
-        let pixel = Pixel {
-            color: b"".to_string(),
-            cost: canvas.rules.base_paint_fee(),
-            last_painter: canvas.rules.canvas_treasury(),
-            last_painted_at: 0,
-        };
-        df::add(&mut chunk.id, Coordinate(x, y), pixel);
-    };
-    df::borrow_mut(&mut chunk.id, Coordinate(x, y))
+
+    &mut chunk.pixels[x][y]
 }
 
 public fun calculate_pixels_paint_fee(
@@ -256,19 +289,10 @@ public fun calculate_pixels_paint_fee(
 ): u64 {
     let mut total_fee = 0;
     x.length().do!(|i| {
-        let chunk_coordinate = get_chunk_coordinate_from_pixel(x[i], y[i]);
-        let chunk = canvas.chunks.borrow(chunk_coordinate);
-        let (x, y) = offset_pixel_coordinate(
+        let pixel: &Pixel = canvas.pixel(
             x[i],
             y[i],
-            chunk_coordinate,
         );
-        if (!df::exists_(&chunk.id, Coordinate(x, y))) {
-            total_fee = total_fee + canvas.rules.base_paint_fee();
-            return
-        };
-
-        let pixel: &Pixel = df::borrow(&chunk.id, Coordinate(x, y));
 
         total_fee =
             total_fee + pixel.get_cost(
@@ -421,10 +445,11 @@ public fun create_canvas_for_testing(
         rules: canvas_admin::new_rules(
             100000000,
             1000,
-            admin_cap.id().to_address(),
+            ctx.sender(),
             100000000,
         ),
         ticket_odds: 100,
+        fee_router: fee_router::new_fee_router(ctx),
     };
 
     add_new_chunk(
