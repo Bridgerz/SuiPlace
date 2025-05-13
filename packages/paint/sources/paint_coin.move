@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-module suiplace::paint_coin;
+module suiplace_paint::paint_coin;
 
 use sui::coin::{Self, TreasuryCap};
 use sui::url;

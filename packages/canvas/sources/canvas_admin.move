@@ -13,7 +13,7 @@ fun init(ctx: &mut TxContext) {
     transfer::transfer(canvas_cap, ctx.sender());
 }
 
-public struct CanvasRules has drop, store {
+public struct CanvasRules has drop, copy, store {
     base_paint_fee: u64,
     pixel_price_multiplier_reset_ms: u64,
     canvas_treasury: address,
@@ -54,7 +54,10 @@ public fun id(cap: &CanvasAdminCap): ID {
     cap.id.to_inner()
 }
 
-public(package) fun update_base_paint_fee(rules: &mut CanvasRules, base_paint_fee: u64) {
+public(package) fun update_base_paint_fee(
+    rules: &mut CanvasRules,
+    base_paint_fee: u64,
+) {
     rules.base_paint_fee = base_paint_fee;
 }
 
@@ -65,17 +68,25 @@ public(package) fun update_pixel_price_multiplier_reset_ms(
     rules.pixel_price_multiplier_reset_ms = pixel_price_multiplier_reset_ms;
 }
 
-public(package) fun update_canvas_treasury(rules: &mut CanvasRules, canvas_treasury: address) {
+public(package) fun update_canvas_treasury(
+    rules: &mut CanvasRules,
+    canvas_treasury: address,
+) {
     rules.canvas_treasury = canvas_treasury;
 }
 
-public fun claim_fees<T>(cap: &mut CanvasAdminCap, fee_ticket: Receiving<Coin<T>>): Coin<T> {
+public fun claim_fees<T>(
+    cap: &mut CanvasAdminCap,
+    fee_ticket: Receiving<Coin<T>>,
+): Coin<T> {
     let fee: Coin<T> = transfer::public_receive(&mut cap.id, fee_ticket);
     fee
 }
 
 #[test_only]
-public fun create_canvas_admin_cap_for_testing(ctx: &mut TxContext): CanvasAdminCap {
+public fun create_canvas_admin_cap_for_testing(
+    ctx: &mut TxContext,
+): CanvasAdminCap {
     let canvas_cap = CanvasAdminCap {
         id: object::new(ctx),
     };

@@ -21,12 +21,13 @@ function waitForInput(query: string): Promise<string> {
     });
   });
 }
+
 /**
  * Figure out how many canvases remain to fill the "next ring".
  * If we have fully completed ring `r`, we move to `r+1`.
  * Otherwise, we finish the current ring `r`.
  */
-function numCanvasesToNextRing(length: number): number {
+function numChunksToNextRing(length: number): number {
   const r = Math.floor(Math.sqrt(length));
   const offset = length - r * r;
   const ringSize = 2 * r + 1;
@@ -46,7 +47,7 @@ async function main() {
   const RPC_URL = process.env.RPC_URL!;
   const PRIVATE_KEY_BASE64 = process.env.PRIVATE_KEY_BASE64!;
   const PACKAGE_ID = process.env.PACKAGE_ID!;
-  const META_CANVAS_ID = process.env.META_CANVAS_ID!;
+  const CANVAS_ID = process.env.CANVAS_ID!;
   const CANVAS_ADMIN_CAP = process.env.CANVAS_ADMIN_CAP!;
 
   // create a client connected to devnet
@@ -57,19 +58,19 @@ async function main() {
   const address = keypair.getPublicKey().toSuiAddress();
 
   let res = (await client.call("sui_getObject", [
-    META_CANVAS_ID,
+    CANVAS_ID,
     {
       showContent: true,
     },
   ])) as any;
 
-  let length = Number(res?.data.content.fields.canvases.fields.size);
+  let length = Number(res?.data.content.fields.chunks.fields.size);
 
-  // 4. Figure out how many canvases we need to add to complete the next ring:
-  let toAdd = numCanvasesToNextRing(length);
+  // 4. Figure out how many chunks we need to add to complete the next ring:
+  let toAdd = numChunksToNextRing(length);
 
   await waitForInput(
-    `Need to add ${toAdd} new canvases. Press enter to continue...`
+    `Need to add ${toAdd} new chunks. Press enter to continue...`
   );
 
   while (toAdd > 0) {
@@ -77,8 +78,8 @@ async function main() {
     let tx = new Transaction();
     while (txs < 7 && toAdd > 0) {
       tx.moveCall({
-        target: `${PACKAGE_ID}::meta_canvas::add_new_canvas`,
-        arguments: [tx.object(META_CANVAS_ID), tx.object(CANVAS_ADMIN_CAP)],
+        target: `${PACKAGE_ID}::canvas::add_new_chunk`,
+        arguments: [tx.object(CANVAS_ID), tx.object(CANVAS_ADMIN_CAP)],
       });
       txs += 1;
       toAdd -= 1;
@@ -105,7 +106,7 @@ async function main() {
     }
 
     await waitForInput(
-      `About to add ${txs} new canvases. Press enter to continue...`
+      `About to add ${txs} new chunks. Press enter to continue...`
     );
 
     await client.signAndExecuteTransaction({
@@ -114,7 +115,7 @@ async function main() {
     });
   }
 
-  console.log("All new canvases added successfully!");
+  console.log("All new chunks added successfully!");
 
   process.exit(0);
 }
