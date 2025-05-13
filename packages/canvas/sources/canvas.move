@@ -10,14 +10,13 @@ use sui::sui::SUI;
 use suiplace::canvas_admin::{Self, CanvasRules, CanvasAdminCap};
 use suiplace::events;
 use suiplace::fee_router::{Self, FeeRouter};
-use suiplace::paint_coin::PAINT_COIN;
 use suiplace::rewards;
+use suiplace_paint::paint_coin::PAINT_COIN;
 
 const CHUNK_WIDTH: u64 = 45;
 
 #[error]
-const EInvalidPaintData: vector<u8> =
-    b"Must provide equal number of x, y, and color values";
+const EInvalidPaintData: vector<u8> = b"Must provide equal number of x, y, and color values";
 
 #[error]
 const EInsufficientFee: vector<u8> = b"Insufficient fee";
@@ -62,11 +61,7 @@ fun init(ctx: &mut TxContext) {
 }
 
 /// Adds a chunk to a Canvas
-public fun add_new_chunk(
-    canvas: &mut Canvas,
-    _: &CanvasAdminCap,
-    ctx: &mut TxContext,
-) {
+public fun add_new_chunk(canvas: &mut Canvas, _: &CanvasAdminCap, ctx: &mut TxContext) {
     let mut pixels: vector<vector<Pixel>> = vector::empty();
     CHUNK_WIDTH.do!(|_| {
         let mut row: vector<Pixel> = vector::empty();
@@ -108,17 +103,11 @@ entry fun paint_pixels(
     payment: Coin<SUI>,
     ctx: &mut TxContext,
 ) {
-    assert!(
-        x.length() == y.length() && y.length() == colors.length(),
-        EInvalidPaintData,
-    );
+    assert!(x.length() == y.length() && y.length() == colors.length(), EInvalidPaintData);
 
     let total_pixels = x.length();
     let payment_amount = payment.value();
-    assert!(
-        payment.value() >= canvas.calculate_pixels_paint_fee( x, y, clock),
-        EInsufficientFee,
-    );
+    assert!(payment.value() >= canvas.calculate_pixels_paint_fee( x, y, clock), EInsufficientFee);
 
     canvas.fee_router.deposit_payment(payment);
 
@@ -192,10 +181,7 @@ entry fun paint_pixels_with_paint(
     payment: Coin<PAINT_COIN>,
     ctx: &TxContext,
 ) {
-    assert!(
-        x.length() == y.length() && y.length() == colors.length(),
-        EInvalidPaintData,
-    );
+    assert!(x.length() == y.length() && y.length() == colors.length(), EInvalidPaintData);
 
     let payment_amount = payment.value();
     assert!(
@@ -335,11 +321,7 @@ public fun get_next_chunk_location(length: u64): Coordinate {
     }
 }
 
-public fun offset_pixel_coordinate(
-    x: u64,
-    y: u64,
-    chunk_coordinate: Coordinate,
-): (u64, u64) {
+public fun offset_pixel_coordinate(x: u64, y: u64, chunk_coordinate: Coordinate): (u64, u64) {
     let offset_x = x - (chunk_coordinate.x() * CHUNK_WIDTH);
     let offset_y = y - (chunk_coordinate.y() * CHUNK_WIDTH);
     (offset_x, offset_y)
@@ -357,11 +339,7 @@ public fun calculate_cost_in_paint(rules: &CanvasRules, pixels: u64): u64 {
     rules.paint_coin_fee() * pixels
 }
 
-public fun is_multiplier_expired(
-    pixel: &Pixel,
-    rules: &CanvasRules,
-    clock: &Clock,
-): bool {
+public fun is_multiplier_expired(pixel: &Pixel, rules: &CanvasRules, clock: &Clock): bool {
     if (pixel.last_painted_at == 0) {
         false
     } else {
@@ -397,11 +375,7 @@ public fun last_painter(pixel: &Pixel): address {
     pixel.last_painter
 }
 
-public fun update_base_paint_fee(
-    _: &CanvasAdminCap,
-    canvas: &mut Canvas,
-    base_paint_fee: u64,
-) {
+public fun update_base_paint_fee(_: &CanvasAdminCap, canvas: &mut Canvas, base_paint_fee: u64) {
     canvas.rules.update_base_paint_fee(base_paint_fee);
 }
 
@@ -425,19 +399,12 @@ public fun update_canvas_treasury(
     canvas.rules.update_canvas_treasury(canvas_treasury);
 }
 
-public fun update_ticket_odds(
-    _: &CanvasAdminCap,
-    canvas: &mut Canvas,
-    ticket_odds: u64,
-) {
+public fun update_ticket_odds(_: &CanvasAdminCap, canvas: &mut Canvas, ticket_odds: u64) {
     canvas.ticket_odds = ticket_odds;
 }
 
 #[test_only]
-public fun create_canvas_for_testing(
-    admin_cap: &CanvasAdminCap,
-    ctx: &mut TxContext,
-): Canvas {
+public fun create_canvas_for_testing(admin_cap: &CanvasAdminCap, ctx: &mut TxContext): Canvas {
     let mut canvas = Canvas {
         id: object::new(ctx),
         chunks: object_table::new(ctx),

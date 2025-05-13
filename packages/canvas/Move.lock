@@ -2,10 +2,11 @@
 
 [move]
 version = 3
-manifest_digest = "22DFFFAED4AFD0E5CA0EB79C9A3AEDF95B7E1DDB267E5890411B26BF1CFAE83C"
-deps_digest = "F8BBB0CCB2491CA29A3DF03D6F92277A4F3574266507ACD77214D37ECA3F3082"
+manifest_digest = "5044D0DFEF38302BD63C9AA41B66805FE4C76DF3B6343FDF43D4C56AD02B9756"
+deps_digest = "3C4103934B1E040BB6B23F1D610B4EF9F2F1166A50A104EADCF77467C004C600"
 dependencies = [
   { id = "Sui", name = "Sui" },
+  { id = "suiplace_paint", name = "suiplace_paint" },
 ]
 
 [[move.package]]
@@ -20,9 +21,23 @@ dependencies = [
   { id = "MoveStdlib", name = "MoveStdlib" },
 ]
 
+[[move.package]]
+id = "suiplace_paint"
+source = { local = "../paint" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
 [move.toolchain-version]
-compiler-version = "1.47.1"
+compiler-version = "1.48.2"
 edition = "2024.beta"
 flavor = "sui"
 
 [env]
+
+[env.testnet]
+chain-id = "4c78adac"
+original-published-id = "0x9d63614700c371fde474251d4584eb07e2612443903426af6a6bc65b632e1d11"
+latest-published-id = "0x9d63614700c371fde474251d4584eb07e2612443903426af6a6bc65b632e1d11"
+published-version = "1"
