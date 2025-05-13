@@ -1,6 +1,5 @@
 module suiplace::canvas;
 
-use std::debug::print;
 use std::string::String;
 use std::u64;
 use sui::clock::Clock;

@@ -1,12 +1,12 @@
 [package]
-name = "suiplace"
+name = "suiplace_paint"
 edition = "2024.beta"
 
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/mainnet" }
 
 [addresses]
-suiplace = "0x0"
+suiplace_paint = "0x0"
 
 [dev-dependencies]
 

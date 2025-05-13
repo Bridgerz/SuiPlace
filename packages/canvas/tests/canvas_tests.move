@@ -1,7 +1,6 @@
 #[test_only]
 module suiplace::canvas_tests;
 
-use std::debug::print;
 use std::string::String;
 use sui::clock;
 use sui::coin::{Self, Coin};
@@ -17,7 +16,7 @@ fun test_paint_pixel() {
     let (admin, manny) = (@0x1, @0x2);
 
     let mut canvas;
-    let mut admin_cap;
+    let admin_cap;
 
     let mut scenario = test_scenario::begin(admin);
 
