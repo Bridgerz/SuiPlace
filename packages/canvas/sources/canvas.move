@@ -2,7 +2,6 @@ module suiplace::canvas;
 
 use std::string::String;
 use std::u64;
-use sui::balance::Balance;
 use sui::clock::Clock;
 use sui::coin::Coin;
 use sui::object_table::{Self, ObjectTable};
@@ -404,11 +403,10 @@ public fun update_ticket_odds(_: &CanvasAdminCap, canvas: &mut Canvas, ticket_od
     canvas.ticket_odds = ticket_odds;
 }
 
-public fun withdraw_fees(
-    canvas: &mut Canvas,
-    ctx: &mut TxContext,
-): Balance<SUI> {
-    canvas.fee_router.withdraw_fees(ctx)
+#[allow(lint(self_transfer))]
+public fun withdraw_fees(canvas: &mut Canvas, ctx: &mut TxContext) {
+    let balance = canvas.fee_router.withdraw_fees(ctx);
+    transfer::public_transfer(sui::coin::from_balance(balance, ctx), ctx.sender());
 }
 
 #[test_only]
