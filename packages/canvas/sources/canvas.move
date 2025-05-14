@@ -2,6 +2,7 @@ module suiplace::canvas;
 
 use std::string::String;
 use std::u64;
+use sui::balance::Balance;
 use sui::clock::Clock;
 use sui::coin::Coin;
 use sui::object_table::{Self, ObjectTable};
@@ -89,7 +90,7 @@ public fun add_new_chunk(canvas: &mut Canvas, _: &CanvasAdminCap, ctx: &mut TxCo
     events::emit_canvas_added_event(chunk_id, total_chunks);
 }
 
-public fun fee_router_mut(canvas: &mut Canvas): &mut FeeRouter {
+public(package) fun fee_router_mut(canvas: &mut Canvas): &mut FeeRouter {
     &mut canvas.fee_router
 }
 
@@ -254,7 +255,7 @@ public fun pixel(canvas: &Canvas, x: u64, y: u64): &Pixel {
     &chunk.pixels[x][y]
 }
 
-public fun pixel_mut(canvas: &mut Canvas, x: u64, y: u64): &mut Pixel {
+fun pixel_mut(canvas: &mut Canvas, x: u64, y: u64): &mut Pixel {
     let chunk_coordinate = get_chunk_coordinate_from_pixel(x, y);
     let chunk = canvas.chunks.borrow_mut(chunk_coordinate);
     let (x, y) = offset_pixel_coordinate(
@@ -401,6 +402,13 @@ public fun update_canvas_treasury(
 
 public fun update_ticket_odds(_: &CanvasAdminCap, canvas: &mut Canvas, ticket_odds: u64) {
     canvas.ticket_odds = ticket_odds;
+}
+
+public fun withdraw_fees(
+    canvas: &mut Canvas,
+    ctx: &mut TxContext,
+): Balance<SUI> {
+    canvas.fee_router.withdraw_fees(ctx)
 }
 
 #[test_only]

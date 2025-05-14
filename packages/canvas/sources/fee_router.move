@@ -38,7 +38,7 @@ public fun deposit_payment(fee_router: &mut FeeRouter, payment: Coin<SUI>) {
     fee_router.balance.join(payment.into_balance());
 }
 
-public fun withdraw_fees(
+public(package) fun withdraw_fees(
     fee_router: &mut FeeRouter,
     ctx: &mut TxContext,
 ): Balance<SUI> {

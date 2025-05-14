@@ -20,7 +20,7 @@ public struct CanvasRules has drop, copy, store {
     paint_coin_fee: u64,
 }
 
-public fun new_rules(
+public(package) fun new_rules(
     base_paint_fee: u64,
     pixel_price_multiplier_reset_ms: u64,
     canvas_treasury: address,
