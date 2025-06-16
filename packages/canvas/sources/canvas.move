@@ -409,6 +409,10 @@ public fun withdraw_fees(canvas: &mut Canvas, ctx: &mut TxContext) {
     transfer::public_transfer(sui::coin::from_balance(balance, ctx), ctx.sender());
 }
 
+public fun get_accrued_fees(canvas: &Canvas, recipient: address): u64 {
+    canvas.fee_router.get_accrued_fees(recipient)
+}
+
 #[test_only]
 public fun create_canvas_for_testing(admin_cap: &CanvasAdminCap, ctx: &mut TxContext): Canvas {
     let mut canvas = Canvas {
