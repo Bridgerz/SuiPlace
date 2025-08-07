@@ -19,11 +19,7 @@ public(package) fun new_fee_router(ctx: &mut TxContext): FeeRouter {
     }
 }
 
-public(package) fun record_fee(
-    fee_router: &mut FeeRouter,
-    sender: address,
-    amount: u64,
-) {
+public(package) fun record_fee(fee_router: &mut FeeRouter, sender: address, amount: u64) {
     assert!(amount > 0);
     if (!fee_router.fees.contains(sender)) {
         fee_router.fees.add(sender, amount);
@@ -38,10 +34,7 @@ public fun deposit_payment(fee_router: &mut FeeRouter, payment: Coin<SUI>) {
     fee_router.balance.join(payment.into_balance());
 }
 
-public(package) fun withdraw_fees(
-    fee_router: &mut FeeRouter,
-    ctx: &mut TxContext,
-): Balance<SUI> {
+public(package) fun withdraw_fees(fee_router: &mut FeeRouter, ctx: &TxContext): Balance<SUI> {
     assert!(fee_router.fees.contains(ctx.sender()));
     let fee = fee_router.fees.borrow_mut(ctx.sender());
     assert!(*fee > 0);

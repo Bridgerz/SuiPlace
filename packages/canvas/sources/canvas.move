@@ -178,12 +178,15 @@ entry fun paint_pixels_with_paint(
     y: vector<u64>,
     colors: vector<String>,
     clock: &Clock,
+    random: &Random,
     payment: Coin<PAINT_COIN>,
-    ctx: &TxContext,
+    ctx: &mut TxContext,
 ) {
     assert!(x.length() == y.length() && y.length() == colors.length(), EInvalidPaintData);
 
+    let total_pixels = x.length();
     let payment_amount = payment.value();
+
     assert!(
         payment.value() >= calculate_cost_in_paint(canvas.rules(), x.length()),
         EInsufficientFee,
@@ -206,6 +209,21 @@ entry fun paint_pixels_with_paint(
             ctx,
         );
     });
+
+    let ticket = rewards::create_ticket(
+        canvas.ticket_odds,
+        total_pixels as u16,
+        random,
+        ctx,
+    );
+
+    events::emit_reward_event(object::id(&ticket), ticket.is_valid());
+
+    if (ticket.is_valid()) {
+        transfer::public_transfer(ticket, ctx.sender());
+    } else {
+        transfer::public_transfer(ticket, @0x0);
+    };
 
     events::emit_pixels_painted_event(
         x,

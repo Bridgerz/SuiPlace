@@ -20,8 +20,7 @@ fun test_paint_pixel() {
 
     let mut scenario = test_scenario::begin(admin);
 
-    admin_cap =
-        canvas_admin::create_canvas_admin_cap_for_testing(scenario.ctx());
+    admin_cap = canvas_admin::create_canvas_admin_cap_for_testing(scenario.ctx());
     canvas = canvas::create_canvas_for_testing(&admin_cap, scenario.ctx());
 
     scenario.next_tx(manny);
@@ -117,8 +116,7 @@ fun test_paint_pixel_with_paint_coin() {
 
     let mut scenario = test_scenario::begin(admin);
 
-    admin_cap =
-        canvas_admin::create_canvas_admin_cap_for_testing(scenario.ctx());
+    admin_cap = canvas_admin::create_canvas_admin_cap_for_testing(scenario.ctx());
     canvas = canvas::create_canvas_for_testing(&admin_cap, scenario.ctx());
     canvas_rules =
         canvas_admin::new_rules(
@@ -128,9 +126,23 @@ fun test_paint_pixel_with_paint_coin() {
             100000000,
         );
 
-    scenario.next_tx(manny);
+    scenario.next_tx(@0x0);
 
     let clock = clock::create_for_testing(scenario.ctx());
+
+    random::create_for_testing(scenario.ctx());
+
+    scenario.next_tx(@0x0);
+
+    let mut random: Random = scenario.take_shared();
+    random.update_randomness_state_for_testing(
+        0,
+        x"1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F",
+        scenario.ctx(),
+    );
+
+    scenario.next_tx(manny);
+
     let color = b"red".to_string();
 
     let payment = coin::mint_for_testing<PAINT_COIN>(
@@ -143,6 +155,7 @@ fun test_paint_pixel_with_paint_coin() {
         vector<u64>[44],
         vector<String>[color],
         &clock,
+        &random,
         payment,
         scenario.ctx(),
     );
@@ -164,6 +177,7 @@ fun test_paint_pixel_with_paint_coin() {
     transfer::public_transfer(admin_cap, admin);
 
     transfer::public_transfer(canvas, admin);
+    test_scenario::return_shared(random);
     scenario.end();
 }
 
@@ -305,10 +319,24 @@ fun test_paint_pixels_with_paint() {
         scenario.ctx(),
     );
 
-    scenario.next_tx(painter);
+    scenario.next_tx(@0x0);
 
     let mut clock = clock::create_for_testing(scenario.ctx());
     clock.set_for_testing(1);
+
+    random::create_for_testing(scenario.ctx());
+
+    scenario.next_tx(@0x0);
+
+    let mut random: Random = scenario.take_shared();
+    random.update_randomness_state_for_testing(
+        0,
+        x"1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F1F",
+        scenario.ctx(),
+    );
+
+    scenario.next_tx(painter);
+
     let color = b"red".to_string();
     let pixels_x = vector<u64>[63, 63, 64];
     let pixels_y = vector<u64>[63, 64, 64];
@@ -324,6 +352,7 @@ fun test_paint_pixels_with_paint() {
         pixels_y,
         colors,
         &clock,
+        &random,
         payment,
         scenario.ctx(),
     );
@@ -345,6 +374,8 @@ fun test_paint_pixels_with_paint() {
     clock::destroy_for_testing(clock);
     transfer::public_transfer(canvas, admin);
     transfer::public_transfer(canvas_cap, admin);
+
+    test_scenario::return_shared(random);
     scenario.end();
 }
 
