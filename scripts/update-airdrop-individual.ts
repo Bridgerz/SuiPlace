@@ -28,12 +28,8 @@ async function main() {
   const signerAddress = keypair.getPublicKey().toSuiAddress();
   console.log("Using signer:", signerAddress);
 
-  await ask("Creating AirDrop object… [enter]");
-  // --- 1. create the airdrop object once ------------------------------------
-
   await ask(`About to add ${airdropData.length} claims **one-by-one**… [enter]`);
 
-  // --- 2. add each claim in its own tx -------------------------------------
   let remaining = airdropData.length;
   for (const { address, amount } of airdropData) {
     if (!isValidSuiAddress(address)) throw new Error(`Invalid Sui address: ${address}`);
@@ -41,7 +37,7 @@ async function main() {
     const tx = new Transaction();
     tx.setSender(signerAddress);
 
-    const suiAmount = amount * 100000000; 
+    const suiAmount = Number(amount) * 100000000;
 
     tx.moveCall({
       target: `${AIRDROP_PACKAGE_ID}::airdrop::add_claims`,

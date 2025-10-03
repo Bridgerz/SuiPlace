@@ -1,0 +1,94 @@
+{
+  "rewards": [
+    {
+      "type": "0x2::sui::SUI",
+      "values": [
+        {
+          "amount": 164,
+          "value": 1000000000,
+          "added": false
+        }
+      ]
+    },
+    {
+      "type": "0x87dfe1248a1dc4ce473bd9cb2937d66cdc6c30fee63f3fe0dbb55c7a09d35dec::up::UP",
+      "values": [
+        {
+          "amount": 416,
+          "value": 12000000,
+          "added": false
+        }
+      ]
+    },
+    {
+      "type": "0xf00eb7ab086967a33c04a853ad960e5c6b0955ef5a47d50b376d83856dc1215e::axol::AXOL",
+      "values": [
+        {
+          "amount": 400,
+          "value": 125000000000,
+          "added": false
+        }
+      ]
+    },
+    {
+      "type": "0x8d572055ac7168a40878ca9f90dfec10c11f77da086f215277da52ab06a62952::paint_coin::PAINT_COIN",
+      "values": [
+        {
+          "amount": 628,
+          "value": 10000000000,
+          "added": false
+        },
+        {
+          "amount": 555,
+          "value": 50000000000,
+          "added": false
+        },
+        {
+          "amount": 490,
+          "value": 100000000000,
+          "added": false
+        },
+        {
+          "amount": 331,
+          "value": 1500000000000,
+          "added": false
+        },
+        {
+          "amount": 378,
+          "value": 200000000000,
+          "added": false
+        },
+        {
+          "amount": 330,
+          "value": 300000000000,
+          "added": false
+        },
+        {
+          "amount": 387,
+          "value": 500000000000,
+          "added": false
+        },
+        {
+          "amount": 348,
+          "value": 1000000000000,
+          "added": false
+        },
+        {
+          "amount": 213,
+          "value": 2500000000000,
+          "added": false
+        },
+        {
+          "amount": 182,
+          "value": 5000000000000,
+          "added": false
+        },
+        {
+          "amount": 254,
+          "value": 10000000000000,
+          "added": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "rewards": [
+    {
+      "type": "0x2::sui::SUI",
+      "values": [
+        {
+          "amount": 164,
+          "value": 100000,
+          "added": false
+        }
+      ]
+    },
+    {
+      "type": "0x4a4da53c3dca9b3dfd30fa92dc0ccdf995b1b689a65c6f7302a583e7c1d28682::paint_coin::PAINT_COIN",
+      "values": [
+        {
+          "amount": 628,
+          "value": 10000000000,
+          "added": false
+        },
+        {
+          "amount": 555,
+          "value": 50000000000,
+          "added": false
+        },
+        {
+          "amount": 490,
+          "value": 100000000000,
+          "added": false
+        },
+        {
+          "amount": 331,
+          "value": 1500000000000,
+          "added": false
+        },
+        {
+          "amount": 378,
+          "value": 200000000000,
+          "added": false
+        },
+        {
+          "amount": 330,
+          "value": 300000000000,
+          "added": false
+        },
+        {
+          "amount": 387,
+          "value": 500000000000,
+          "added": false
+        },
+        {
+          "amount": 348,
+          "value": 1000000000000,
+          "added": false
+        },
+        {
+          "amount": 213,
+          "value": 2500000000000,
+          "added": false
+        },
+        {
+          "amount": 182,
+          "value": 5000000000000,
+          "added": false
+        },
+        {
+          "amount": 254,
+          "value": 10000000000000,
+          "added": false
+        }
+      ]
+    }
+  ],
+  "wheelId": "0xa26fc4797d140448771e8deb494580624d932c2b9f99331496cce0ce926410b1"
+}
