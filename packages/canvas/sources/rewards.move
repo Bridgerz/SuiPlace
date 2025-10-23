@@ -33,6 +33,10 @@ public struct Ticket has key, store {
 
 public struct Reward has key, store {
     id: UID,
+}
+
+public struct RewardV2 has key, store {
+    id: UID,
     reward: TypeName,
     amount: u64,
     reward_id: ID,
@@ -62,7 +66,29 @@ public fun create_reward_wheel(
     transfer::share_object(wheel);
 }
 
+#[deprecated(note = b"Use `add_rewards_v2` instead")]
 public fun add_rewards<T: key + store>(
+    wheel: &mut RewardWheel,
+    _: &CanvasAdminCap,
+    items: vector<T>,
+    ctx: &mut TxContext,
+) {
+    items.do!(|item| {
+        // create reward object
+        let reward = Reward {
+            id: object::new(ctx),
+        };
+
+        let reward_address = object::id(&reward).to_address();
+        transfer::public_transfer(item, reward_address);
+
+        // add reward to wheel
+        let i = wheel.rewards.length();
+        wheel.rewards.add(i as u32, reward);
+    });
+}
+
+public fun add_rewards_v2<T: key + store>(
     wheel: &mut RewardWheel,
     _: &CanvasAdminCap,
     items: vector<T>,
@@ -71,7 +97,7 @@ public fun add_rewards<T: key + store>(
 ) {
     items.zip_do!(amounts, |item, amount| {
         // create reward object
-        let reward = Reward {
+        let reward = RewardV2 {
             id: object::new(ctx),
             reward: type_name::with_defining_ids<T>(),
             amount,
@@ -107,6 +133,7 @@ public fun set_reward_wheel_metadata(
     wheel.metadata = metadata;
 }
 
+#[deprecated(note = b"Use `spin_v2` instead")]
 entry fun spin(
     wheel: &mut RewardWheel,
     ticket: Ticket,
@@ -123,6 +150,29 @@ entry fun spin(
 
     let reward: Reward = wheel.rewards.remove(index);
 
+    ticket.destroy();
+    transfer::public_transfer(
+        reward,
+        ctx.sender(),
+    );
+}
+
+entry fun spin_v2(
+    wheel: &mut RewardWheel,
+    ticket: Ticket,
+    r: &Random,
+    ctx: &mut TxContext,
+) {
+    assert!(!wheel.paused, EWheelIsPaused);
+    assert!(ticket.valid, EInvalidTicket);
+    let mut generator = r.new_generator(ctx);
+    let index = generator.generate_u32_in_range(
+        1,
+        (wheel.rewards.length() as u32),
+    );
+
+    let reward: RewardV2 = wheel.rewards.remove(index);
+
     event::emit(RewardEvent {
         reward: reward.reward,
         amount: reward.amount,
@@ -137,13 +187,21 @@ entry fun spin(
     );
 }
 
+#[deprecated(note = b"Use `claim_reward_v2` instead")]
 public fun claim_reward<T: key + store>(
-    mut reward: Reward,
+    reward: &mut Reward,
+    reward_ticket: Receiving<T>,
+): T {
+    transfer::public_receive(&mut reward.id, reward_ticket)
+}
+
+public fun claim_reward_v2<T: key + store>(
+    mut reward: RewardV2,
     reward_ticket: Receiving<T>,
     ctx: &mut TxContext,
 ) {
     let item = transfer::public_receive(&mut reward.id, reward_ticket);
-    let Reward { id, reward: _, amount: _, reward_id: _ } = reward;
+    let RewardV2 { id, reward: _, amount: _, reward_id: _ } = reward;
     id.delete();
 
     transfer::public_transfer(item, ctx.sender());

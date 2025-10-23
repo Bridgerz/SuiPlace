@@ -119,7 +119,7 @@ fun spin_wheel() {
     );
     scenario.next_tx(player);
 
-    wheel.spin(ticket, &random, scenario.ctx());
+    wheel.spin_v2(ticket, &random, scenario.ctx());
 
     scenario.next_tx(player);
 
@@ -173,25 +173,28 @@ public(package) fun create_test_wheel() {
         id: object::new(scenario.ctx()),
     };
 
-    wheel.add_rewards(
+    wheel.add_rewards_v2(
         &canvas_cap,
         vector<Coin<SUI>>[sui_reward],
+        vector<u64>[1],
         scenario.ctx(),
     );
 
     scenario.next_tx(admin);
 
-    wheel.add_rewards(
+    wheel.add_rewards_v2(
         &canvas_cap,
         vector<Coin<PAINT_COIN>>[paint_reward],
+        vector<u64>[1],
         scenario.ctx(),
     );
 
     scenario.next_tx(admin);
 
-    wheel.add_rewards(
+    wheel.add_rewards_v2(
         &canvas_cap,
         vector<TestReward>[test_object],
+        vector<u64>[1],
         scenario.ctx(),
     );
 

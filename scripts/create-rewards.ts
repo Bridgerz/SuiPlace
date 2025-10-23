@@ -174,7 +174,7 @@ async function main() {
 
         // Call add_rewards<T>
         tx.moveCall({
-          target: `${PACKAGE_ID}::rewards::add_rewards`,
+          target: `${PACKAGE_ID}::rewards::add_rewards_v2`,
           arguments: [
             tx.object(wheelId),
             tx.object(CANVAS_ADMIN_CAP),

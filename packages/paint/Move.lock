@@ -33,7 +33,7 @@ original-published-id = "0x8d572055ac7168a40878ca9f90dfec10c11f77da086f215277da5
 latest-published-id = "0x8d572055ac7168a40878ca9f90dfec10c11f77da086f215277da52ab06a62952"
 published-version = "1"
 
-[env.testnet-mysten]
+[env.testnet]
 chain-id = "4c78adac"
 original-published-id = "0x3e8f2bc3b4b26be96ef03f30070bbe374891e0a9e8435bb762868a0467999a5e"
 latest-published-id = "0x3e8f2bc3b4b26be96ef03f30070bbe374891e0a9e8435bb762868a0467999a5e"

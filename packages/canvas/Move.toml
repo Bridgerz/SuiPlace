@@ -8,3 +8,7 @@ suiplace_paint = { local = "../paint" }
 
 [addresses]
 suiplace = "0x0"
+
+[dev-dependencies]
+
+[dev-addresses]
