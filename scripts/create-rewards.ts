@@ -9,8 +9,6 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import * as fs from "fs";
 import * as path from "path";
 
-
-
 // ----------------- main -----------------
 async function main() {
   const RPC_URL = process.env.RPC_URL!;
@@ -20,17 +18,20 @@ async function main() {
 
   if (!RPC_URL || !PRIVATE_KEY_BASE64 || !PACKAGE_ID || !CANVAS_ADMIN_CAP) {
     throw new Error(
-      "Missing required env: RPC_URL, PRIVATE_KEY_BASE64, PACKAGE_ID, CANVAS_ADMIN_CAP",
+      "Missing required env: RPC_URL, PRIVATE_KEY_BASE64, PACKAGE_ID, CANVAS_ADMIN_CAP"
     );
   }
 
   const client = new SuiClient({ url: RPC_URL });
   const keypair = Ed25519Keypair.fromSecretKey(PRIVATE_KEY_BASE64);
   const signerAddress = keypair.getPublicKey().toSuiAddress();
-  if (!isValidSuiAddress(signerAddress)) throw new Error("Signer address invalid");
-  console.log("Using signer:", signerAddress); 
+  if (!isValidSuiAddress(signerAddress))
+    throw new Error("Signer address invalid");
+  console.log("Using signer:", signerAddress);
 
-  const rewardsData = JSON.parse(fs.readFileSync(path.resolve(__dirname, "reward.json"), "utf8"));
+  const rewardsData = JSON.parse(
+    fs.readFileSync(path.resolve(__dirname, "reward.json"), "utf8")
+  );
   const BATCH_LIMIT = 500;
 
   // 1) Ensure reward wheel exists
@@ -61,7 +62,9 @@ async function main() {
     const changes = (result as any).objectChanges as any[] | undefined;
     const createdWheel = changes?.find(
       (c: any) =>
-        c.type === "created" && typeof c.objectType === "string" && c.objectType.endsWith("::rewards::RewardWheel"),
+        c.type === "created" &&
+        typeof c.objectType === "string" &&
+        c.objectType.endsWith("::rewards::RewardWheel")
     );
 
     if (!createdWheel) {
@@ -69,7 +72,11 @@ async function main() {
     }
 
     rewardsData.wheelId = (createdWheel as any).objectId as string;
-    fs.writeFileSync(path.resolve(__dirname, "reward.json"), JSON.stringify(rewardsData, null, 2) + "\n", "utf8");
+    fs.writeFileSync(
+      path.resolve(__dirname, "reward.json"),
+      JSON.stringify(rewardsData, null, 2) + "\n",
+      "utf8"
+    );
     console.log("Created RewardWheel:", rewardsData.wheelId);
   } else {
     console.log("Using existing RewardWheel:", rewardsData.wheelId);
@@ -94,20 +101,32 @@ async function main() {
       const amount = Number(entry.amount);
       const value = BigInt(entry.value);
       if (amount <= 0 || value <= BigInt(0)) {
-        console.log(`Skipping invalid entry for ${reward.type} at index ${idx}`);
+        console.log(
+          `Skipping invalid entry for ${reward.type} at index ${idx}`
+        );
         entry.added = true;
-        fs.writeFileSync(path.resolve(__dirname, "reward.json"), JSON.stringify(rewardsData, null, 2) + "\n", "utf8");
+        fs.writeFileSync(
+          path.resolve(__dirname, "reward.json"),
+          JSON.stringify(rewardsData, null, 2) + "\n",
+          "utf8"
+        );
         continue;
       }
 
       let addedSoFar = Number((entry as any).addedCount || 0);
       if (addedSoFar >= amount) {
         entry.added = true;
-        fs.writeFileSync(path.resolve(__dirname, "reward.json"), JSON.stringify(rewardsData, null, 2) + "\n", "utf8");
+        fs.writeFileSync(
+          path.resolve(__dirname, "reward.json"),
+          JSON.stringify(rewardsData, null, 2) + "\n",
+          "utf8"
+        );
         continue;
       }
 
-      console.log(`Adding rewards for type=${coinType}, value=${entry.value}, amount=${amount}, alreadyAdded=${addedSoFar}`);
+      console.log(
+        `Adding rewards for type=${coinType}, value=${entry.value}, amount=${amount}, alreadyAdded=${addedSoFar}`
+      );
 
       while (addedSoFar < amount) {
         const remaining = amount - addedSoFar;
@@ -119,18 +138,32 @@ async function main() {
         // if coin is Sui, we need to get a gas coin
         let gasCoin: any = null;
         if (coinType === "0x2::sui::SUI") {
-          const allCoins = await client.getCoins({ owner: signerAddress, coinType: "0x2::sui::SUI" });
+          const allCoins = await client.getCoins({
+            owner: signerAddress,
+            coinType: "0x2::sui::SUI",
+          });
           // get largest coin object ID
-          gasCoin = allCoins.data.sort((a, b) => Number(b.balance) - Number(a.balance))[1];
+          gasCoin = allCoins.data.sort(
+            (a, b) => Number(b.balance) - Number(a.balance)
+          )[1];
 
           if (gasCoin) {
-            tx.setGasPayment([{ objectId: gasCoin.coinObjectId, version: gasCoin.version, digest: gasCoin?.digest }]);
+            tx.setGasPayment([
+              {
+                objectId: gasCoin.coinObjectId,
+                version: gasCoin.version,
+                digest: gasCoin?.digest,
+              },
+            ]);
           }
         }
 
         // get coin object from connected wallet
         const coins = await client.getAllCoins({ owner: signerAddress });
-        const coinId = coins.data.find((c) => c.coinType === coinType && c.coinObjectId !== gasCoin?.coinObjectId);
+        const coinId = coins.data.find(
+          (c) =>
+            c.coinType === coinType && c.coinObjectId !== gasCoin?.coinObjectId
+        );
         if (!coinId) {
           throw new Error(`No coin of type ${coinType} found for splitting`);
         }
@@ -142,28 +175,53 @@ async function main() {
         // Call add_rewards<T>
         tx.moveCall({
           target: `${PACKAGE_ID}::rewards::add_rewards`,
-          arguments: [tx.object(wheelId), tx.object(CANVAS_ADMIN_CAP), tx.makeMoveVec({type: `0x2::coin::Coin<${coinType}>`, elements: [...coinsOut]})],
+          arguments: [
+            tx.object(wheelId),
+            tx.object(CANVAS_ADMIN_CAP),
+            tx.makeMoveVec({
+              type: `0x2::coin::Coin<${coinType}>`,
+              elements: [...coinsOut],
+            }),
+            tx.makeMoveVec({
+              type: "u64",
+              elements: [...splitAmts],
+            }),
+          ],
           typeArguments: [`0x2::coin::Coin<${coinType}>`],
         });
 
         tx.setGasBudget(5000000000);
 
-        const res = await client.signAndExecuteTransaction({ signer: keypair, transaction: tx, options: { showObjectChanges: true, showEffects: true } });
+        const res = await client.signAndExecuteTransaction({
+          signer: keypair,
+          transaction: tx,
+          options: { showObjectChanges: true, showEffects: true },
+        });
         if (res.effects?.status.status === "failure")
           throw new Error(res.effects?.status.error);
 
-        console.log(`  ✅ batch size=${batchSize} for type=${coinType}, digest=${res.digest}`);
+        console.log(
+          `  ✅ batch size=${batchSize} for type=${coinType}, digest=${res.digest}`
+        );
 
         // Update progress for idempotency
         addedSoFar += batchSize;
         (entry as any).addedCount = addedSoFar;
-        fs.writeFileSync(path.resolve(__dirname, "reward.json"), JSON.stringify(rewardsData, null, 2) + "\n", "utf8");
+        fs.writeFileSync(
+          path.resolve(__dirname, "reward.json"),
+          JSON.stringify(rewardsData, null, 2) + "\n",
+          "utf8"
+        );
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
 
       // All batches for this entry completed
       entry.added = true;
-      fs.writeFileSync(path.resolve(__dirname, "reward.json"), JSON.stringify(rewardsData, null, 2) + "\n", "utf8");
+      fs.writeFileSync(
+        path.resolve(__dirname, "reward.json"),
+        JSON.stringify(rewardsData, null, 2) + "\n",
+        "utf8"
+      );
     }
   }
 
@@ -174,5 +232,3 @@ main().catch((e) => {
   console.error("Script failed:", e);
   process.exit(1);
 });
-
-
